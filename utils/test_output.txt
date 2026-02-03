@@ -2,13 +2,18 @@
 ===============
 Basic Scale Tests:
 ===============
-n=10 KD-Tree built in 0.015 ms
-n=10 KD-Tree found in 0.0298 ms
-n=100 KD-Tree built in 0.0908 ms
-n=100 KD-Tree found in 0.0105 ms
-n=1000 KD-Tree built in 1.0018 ms
-n=1000 KD-Tree found in 0.0138 ms
-n=10000 KD-Tree built in 11.8017 ms
-n=10000 KD-Tree found in 0.0176 ms
-n=100000 KD-Tree built in 140.1794 ms
-n=100000 KD-Tree found in 0.0346 ms
+n=10 KD-Tree built in 0.0153 ms
+n=10 KD-Tree found in 0.042 ms
+n=100 KD-Tree built in 0.1028 ms
+n=100 KD-Tree found in 0.0114 ms
+n=1000 KD-Tree built in 1.6875 ms
+n=1000 KD-Tree found in 0.0157 ms
+n=10000 KD-Tree built in 11.9195 ms
+n=10000 KD-Tree found in 0.0429 ms
+n=100000 KD-Tree built in 137.2125 ms
+n=100000 KD-Tree found in 0.037 ms
+
+===============
+Basic GeoKDTree Tests:
+===============
+Closest point to (47.6062, -122.3321) is (37.7749, -122.4194)

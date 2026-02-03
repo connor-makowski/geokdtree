@@ -1,4 +1,3 @@
-
 from geokdtree import KDTree
 from time import time
 

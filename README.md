@@ -12,28 +12,27 @@
 
 ## Quick Start:
 ```py
+from geokdtree import GeoKDTree
 
+example_points = [
+    (34.0522, -118.2437),  # Los Angeles
+    (40.7128, -74.0060),   # New York
+    (37.7749, -122.4194),  # San Francisco
+    (51.5074, -0.1278),    # London
+    (48.8566, 2.3522),     # Paris
+]
+
+geo_kd_tree = GeoKDTree(points = example_points)
+test_point = (47.6062, -122.3321) # Seattle
+
+closest_idx = geo_kd_tree.closest_idx(test_point) # Expect San Francisco to be closest
+print(f"Closest point to {test_point} is {example_points[closest_idx] }")
 ```
 
 ### Documentation
 
 - Docs: https://connor-makowski.github.io/geokdtree/geokdtree.html
 - Git Repo: https://github.com/connor-makowski/geokdtree
-
-# Getting Started
-
-## Installation
-
-```
-pip install geokdtree
-```
-
-## Basic Usage
-
-# About
-## Key Features
-
-# Advanced Usage
 
 # Development
 ## Running Tests, Prettifying Code, and Updating Docs
@@ -51,6 +50,3 @@ Make sure Docker is installed and running on a Unix system (Linux, MacOS, WSL2).
 
 - Note: You can and should modify the `Dockerfile` to test different python versions.
 
-
-## Attributions and Thanks
-Originally inspired by [searoute](https://github.com/genthalili/searoute-py) including the use of one of their [datasets](https://github.com/genthalili/searoute-py/blob/main/searoute/data/marnet_densified_v2_old.geojson) that has been modified to work properly with this package.

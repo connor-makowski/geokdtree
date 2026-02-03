@@ -6,13 +6,13 @@ cp README.md geokdtree/__init__.py
 sed -i '1s/^/\"\"\"\n/' geokdtree/__init__.py
 echo "\"\"\"" >> geokdtree/__init__.py
 echo "" >> geokdtree/__init__.py
-echo "from .geokdtree import KDTree, GeoKDTree" >> geokdtree/__init__.py
+echo "from .core import KDTree, GeoKDTree" >> geokdtree/__init__.py
 
 
 
 # Specify versions for documentation purposes
-VERSION="0.0.1"
-OLD_DOC_VERSIONS="0.0.1"
+VERSION="1.0.0"
+OLD_DOC_VERSIONS="1.0.0"
 export version_options="$VERSION $OLD_DOC_VERSIONS"
 
 # generate the docs for a version function:
@@ -23,7 +23,7 @@ function generate_docs() {
             pip install "./dist/geokdtree-$INPUT_VERSION.tar.gz"
         fi
     fi
-    pdoc -o ./docs/$INPUT_VERSION -t ./doc_template geokdtree !geokdtree.geographs
+    pdoc -o ./docs/$INPUT_VERSION -t ./doc_template geokdtree
 }
 
 # Generate the docs for the current version
