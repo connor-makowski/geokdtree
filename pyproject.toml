@@ -1,0 +1,33 @@
+[tool.black]
+line-length = 80
+target-version = ['py312']
+exclude = '/.*(migrations|__pycache__).*/'
+
+[tool.setuptools]
+py-modules = ["geokdtree"]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "geokdtree"
+version = "1.0.0"
+description = "Given a coordinate point, find a very close point given a set of coordinate points."
+authors = [
+    {name="Connor Makowski", email="conmak@mit.edu"}
+]
+readme = "README.md"
+requires-python = ">=3.10"
+license="MIT"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: C++",
+    "Operating System :: OS Independent",
+]
+dependencies = []
+
+[project.urls]
+"Homepage" = "https://github.com/connor-makowski/geokdtree"
+"Bug Tracker" = "https://github.com/connor-makowski/geokdtree/issues"
+"Documentation" = "https://connor-makowski.github.io/geokdtree/geokdtree.html"

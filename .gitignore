@@ -1,0 +1,9 @@
+/venv/
+/penv/
+/__pycache__/
+*/__pycache__
+*.egg-info
+*.pyc
+build/
+utils/*.geojson
+ignore
