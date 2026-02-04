@@ -33,8 +33,11 @@ def kdtree(points, depth, axis_count):
         points[median],
         axis,
         kdtree(points=points[:median], depth=depth + 1, axis_count=axis_count),
-        kdtree(points=points[median + 1 :], depth=depth + 1, axis_count=axis_count),
+        kdtree(
+            points=points[median + 1 :], depth=depth + 1, axis_count=axis_count
+        ),
     )
+
 
 def squared_distance(p1, p2, axis_count=2):
     """
@@ -65,9 +68,7 @@ def squared_distance(p1, p2, axis_count=2):
     return sum([(p1[i] - p2[i]) ** 2 for i in range(axis_count)])
 
 
-def closest_point(
-    node, point, best=None, axis_count=2, best_dist=float("inf")
-):
+def closest_point(node, point, best=None, axis_count=2, best_dist=float("inf")):
     """
     Function:
 

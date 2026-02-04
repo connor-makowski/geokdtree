@@ -1,5 +1,6 @@
 from .core import kdtree, closest_point
 
+
 class KDTree:
     def __init__(self, points):
         """

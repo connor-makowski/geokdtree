@@ -1,6 +1,7 @@
 from .core import kdtree
 from math import cos, sin, pi
 
+
 # Speed Utils for the 3D GeoKDTree
 def __squared_distance_3d__(p1, p2):
     """
@@ -72,10 +73,9 @@ def __closest_point_3d__(node, point, best=None, best_dist=float("inf")):
     best, best_dist = __closest_point_3d__(close, point, best, best_dist)
     # Check the other side if needed
     if diff**2 < best_dist:
-        best, best_dist = __closest_point_3d__(
-            away, point, best, best_dist
-        )
+        best, best_dist = __closest_point_3d__(away, point, best, best_dist)
     return best, best_dist
+
 
 # Special Serializer to convert lat,lon,index to x,y,z,index
 def __lat_lon_idx_to_xyz_idx__(
@@ -158,7 +158,7 @@ class GeoKDTree:
             __lat_lon_idx_to_xyz_idx__(point[0], point[1]),
         )
         return best[3]  # Return the index of the closest point
-    
+
     def closest_point(self, point: tuple):
         """
         Function:
