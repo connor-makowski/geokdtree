@@ -9,13 +9,13 @@ for n in range(1, 6):
     start_time = time()
     kd_tree = KDTree(nodes)
     print(
-        f"n={n_act} KD-Tree built in {round((time() - start_time) * 1000, 4)} ms"
+        f"n={n_act} KDTree built in {round((time() - start_time) * 1000, 4)} ms"
     )
     start_time = time()
     closest_point = kd_tree.closest_point((5, 5.5))
     print(
-        f"n={n_act} KD-Tree found in {round((time() - start_time) * 1000, 4)} ms"
+        f"n={n_act} KDTree found in {round((time() - start_time) * 1000, 4)} ms"
     )
     if closest_point != (5, 6):
-        print(f"KD-Tree closest point test failed for n={n_act}")
+        print(f"KDTree closest point test failed for n={n_act}")
         success = False

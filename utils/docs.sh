@@ -6,7 +6,8 @@ cp README.md geokdtree/__init__.py
 sed -i '1s/^/\"\"\"\n/' geokdtree/__init__.py
 echo "\"\"\"" >> geokdtree/__init__.py
 echo "" >> geokdtree/__init__.py
-echo "from .core import KDTree, GeoKDTree" >> geokdtree/__init__.py
+echo "from .geokdtree import GeoKDTree" >> geokdtree/__init__.py
+echo "from .kdtree import KDTree" >> geokdtree/__init__.py
 
 
 

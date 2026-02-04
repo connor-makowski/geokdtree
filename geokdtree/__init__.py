@@ -53,4 +53,5 @@ Make sure Docker is installed and running on a Unix system (Linux, MacOS, WSL2).
 
 """
 
-from .core import KDTree, GeoKDTree
+from .geokdtree import GeoKDTree
+from .kdtree import KDTree
