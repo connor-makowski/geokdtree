@@ -16,4 +16,15 @@ test_point = (47.6062, -122.3321)  # Seattle
 closest_idx = geo_kd_tree.closest_idx(
     test_point
 )  # Expect San Francisco to be closest
-print(f"Closest point to {test_point} is {example_points[closest_idx] }")
+
+if closest_idx != 2:
+    print(f"Error: Expected closest index to be 2, got {closest_idx}")
+    print(f"Closest point to {test_point} is {example_points[closest_idx] }")
+else:
+    print("Success: Closest index is correct.")
+
+closest_point = geo_kd_tree.closest_point(test_point)
+if closest_point != example_points[2]:
+    print(f"Error: Expected closest point to be {example_points[2]}, got {closest_point}")
+else:
+    print("Success: Closest point is correct.")

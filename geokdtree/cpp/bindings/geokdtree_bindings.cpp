@@ -5,7 +5,7 @@
 
 namespace nb = nanobind;
 
-NB_MODULE(geokdtree_cpp, m) {
+NB_MODULE(cpp, m) {
     m.doc() = "KD-Tree implementation for efficient nearest neighbor search";
     
     // ClosestPointResult struct
@@ -35,12 +35,12 @@ NB_MODULE(geokdtree_cpp, m) {
         .def(nb::init<const std::vector<std::vector<double>>&>(),
              nb::arg("points"),
              "Build a KD-Tree from a list of points")
-        .def("closest_point", &KDTree::closest_point,
-             nb::arg("point"),
-             "Find the closest point in the tree to the given point")
-        .def("closest_point_with_distance", &KDTree::closest_point_with_distance,
-             nb::arg("point"),
-             "Find the closest point and its distance to the given point");
+        .def("closest_point",
+            [](const KDTree& self, const std::vector<double>& point) {
+                return nb::tuple(nb::cast(self.closest_point(point)));
+            },
+            nb::arg("point"),
+            "Find the closest point to the given point");
     
     // GeoKDTree class
     nb::class_<GeoKDTree>(m, "GeoKDTree")
@@ -50,9 +50,9 @@ NB_MODULE(geokdtree_cpp, m) {
         .def("closest_idx", &GeoKDTree::closest_idx,
              nb::arg("point"),
              "Find the index of the closest point to the given (lat, lon) pair")
-        .def("closest_idx_with_distance", &GeoKDTree::closest_idx_with_distance,
-             nb::arg("point"),
-             "Find the index and distance of the closest point to the given (lat, lon) pair")
+        .def("closest_point", &GeoKDTree::closest_point,
+            nb::arg("point"),
+             "Find the closest point (lat, lon) to the given (lat, lon) pair")
         .def_static("lat_lon_idx_to_xyz_idx", &GeoKDTree::lat_lon_idx_to_xyz_idx,
              nb::arg("lat"), nb::arg("lon"), nb::arg("idx") = 0,
              "Convert latitude and longitude to Cartesian coordinates (x, y, z) with an index");

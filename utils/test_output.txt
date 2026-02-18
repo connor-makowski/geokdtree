@@ -2,34 +2,35 @@
 ===============
 Basic Scale Tests:
 ===============
-n=10 KDTree built in 0.0157 ms
-n=10 KDTree found in 0.0286 ms
-n=100 KDTree built in 0.0925 ms
-n=100 KDTree found in 0.0157 ms
-n=1000 KDTree built in 1.801 ms
-n=1000 KDTree found in 0.0155 ms
-n=10000 KDTree built in 12.2328 ms
-n=10000 KDTree found in 0.0255 ms
-n=100000 KDTree built in 139.9384 ms
-n=100000 KDTree found in 0.0358 ms
+n=10 KDTree built in 0.015 ms
+n=10 KDTree found in 0.0281 ms
+n=100 KDTree built in 0.0987 ms
+n=100 KDTree found in 0.0124 ms
+n=1000 KDTree built in 1.0512 ms
+n=1000 KDTree found in 0.0143 ms
+n=10000 KDTree built in 12.5155 ms
+n=10000 KDTree found in 0.0291 ms
+n=100000 KDTree built in 144.4461 ms
+n=100000 KDTree found in 0.0374 ms
 
 ===============
 Basic GeoKDTree Tests:
 ===============
-Closest point to (47.6062, -122.3321) is (37.7749, -122.4194)
+Success: Closest index is correct.
+Success: Closest point is correct.
 
 ===============
 GeoKDTree SCALE Tests:
 ===============
-n=1000 GeoKDTree data created in 0.3984 ms
-n=1000 GeoKDTree built in 2.9678 ms.
-n=1000 GeoKDTree found in 0.0432 ms.
-n=10000 GeoKDTree data created in 4.1885 ms
-n=10000 GeoKDTree built in 24.9321 ms.
-n=10000 GeoKDTree found in 0.0279 ms.
-n=100000 GeoKDTree data created in 40.9803 ms
-n=100000 GeoKDTree built in 373.8618 ms.
-n=100000 GeoKDTree found in 0.0498 ms.
-n=1000000 GeoKDTree data created in 408.0286 ms
-n=1000000 GeoKDTree built in 8856.8778 ms.
-n=1000000 GeoKDTree found in 0.0746 ms.
+n=1000 GeoKDTree data created in 0.4411 ms
+n=1000 GeoKDTree built in 2.4328 ms.
+n=1000 GeoKDTree found in 0.0322 ms.
+n=10000 GeoKDTree data created in 4.5471 ms
+n=10000 GeoKDTree built in 27.9167 ms.
+n=10000 GeoKDTree found in 0.037 ms.
+n=100000 GeoKDTree data created in 44.4348 ms
+n=100000 GeoKDTree built in 382.777 ms.
+n=100000 GeoKDTree found in 0.0482 ms.
+n=1000000 GeoKDTree data created in 444.4046 ms
+n=1000000 GeoKDTree built in 8943.1214 ms.
+n=1000000 GeoKDTree found in 0.0768 ms.

@@ -136,28 +136,16 @@ std::vector<double> KDTree::closest_point(const std::vector<double>& point) cons
     return best;
 }
 
-ClosestPointResult KDTree::closest_point_with_distance(const std::vector<double>& point) const {
-    if (!root) {
-        throw std::runtime_error("KDTree is empty");
-    }
-    
-    std::vector<double> best;
-    double best_dist = std::numeric_limits<double>::infinity();
-    
-    find_closest(root, point, 0, best, best_dist, dimensions);
-    
-    return ClosestPointResult{best, best_dist};
-}
-
 // ============================================================================
 // GeoKDTree Implementation
 // ============================================================================
 
-GeoKDTree::GeoKDTree(const std::vector<std::pair<double, double>>& points) {
+GeoKDTree::GeoKDTree(const std::vector<std::pair<double, double>>& points) 
+    : original_points(points)
+{
     if (points.empty()) {
         throw std::invalid_argument("Cannot build GeoKDTree from empty point list");
     }
-    
     // Convert lat/lon points to xyz coordinates
     std::vector<std::vector<double>> xyz_points;
     xyz_points.reserve(points.size());
@@ -264,21 +252,12 @@ int GeoKDTree::closest_idx(const std::pair<double, double>& point) const {
     return static_cast<int>(best[3]);
 }
 
-ClosestIdxResult GeoKDTree::closest_idx_with_distance(const std::pair<double, double>& point) const {
+std::pair<double, double> GeoKDTree::closest_point(const std::pair<double, double>& point) const {
     if (!root) {
         throw std::runtime_error("GeoKDTree is empty");
     }
-    
-    // Convert query point to xyz
-    auto query_point = kdtree_helpers::lat_lon_idx_to_xyz_idx(point.first, point.second, 0);
-    
-    std::vector<double> best;
-    double best_dist = std::numeric_limits<double>::infinity();
-    
-    find_closest_3d(root, query_point, 0, best, best_dist);
-    
-    // Return the index and distance
-    return ClosestIdxResult{static_cast<int>(best[3]), best_dist};
+    int closest_index = closest_idx(point);
+    return original_points[closest_index];
 }
 
 std::vector<double> GeoKDTree::lat_lon_idx_to_xyz_idx(double lat, double lon, int idx) {

@@ -77,14 +77,13 @@ public:
     // Find the closest point to the given point
     std::vector<double> closest_point(const std::vector<double>& point) const;
     
-    // Find the closest point and distance
-    ClosestPointResult closest_point_with_distance(const std::vector<double>& point) const;
 };
 
 // Geographic KD-Tree class (for lat/lon coordinates)
 class GeoKDTree {
 private:
     std::shared_ptr<GeoKDNode> root;
+    std::vector<std::pair<double, double>> original_points;  // Store original lat/lon points for retrieval
     
     // Build tree recursively
     std::shared_ptr<GeoKDNode> build_tree(std::vector<std::vector<double>>& points, int depth);
@@ -105,8 +104,8 @@ public:
     // Find the index of the closest point
     int closest_idx(const std::pair<double, double>& point) const;
     
-    // Find the index and distance of the closest point
-    ClosestIdxResult closest_idx_with_distance(const std::pair<double, double>& point) const;
+    // Find the closest point (lat, lon) to the given (lat, lon) pair
+    std::pair<double, double> closest_point(const std::pair<double, double>& point) const;
     
     // Static helper for coordinate conversion
     static std::vector<double> lat_lon_idx_to_xyz_idx(double lat, double lon, int idx = 0);
