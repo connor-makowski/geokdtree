@@ -25,6 +25,8 @@ else:
 
 closest_point = geo_kd_tree.closest_point(test_point)
 if closest_point != example_points[2]:
-    print(f"Error: Expected closest point to be {example_points[2]}, got {closest_point}")
+    print(
+        f"Error: Expected closest point to be {example_points[2]}, got {closest_point}"
+    )
 else:
     print("Success: Closest point is correct.")

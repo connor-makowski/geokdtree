@@ -138,8 +138,10 @@ Make sure Docker is installed and running on a Unix system (Linux, MacOS, WSL2).
 - Note: You can and should modify the `Dockerfile` to test different python versions.
 
 """
+
 try:
     from geokdtree.cpp import GeoKDTree, KDTree
+
     # print("Successfully imported from geokdtree.cpp. Using optimized implementation.")
 except ImportError:
     # TODO: Find way to warn users if they were not able to build / import the C++ extension, as this will result in significantly slower performance.
