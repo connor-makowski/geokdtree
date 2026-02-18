@@ -8,7 +8,7 @@ requires = ["skst_safe_build", "nanobind"]
 build-backend = "skst_safe_build"
 
 [tool.scikit-build]
-cmake.verbose = true
+build.verbose = false
 build-dir = "build/{wheel_tag}"
 
 [tool.setuptools]
@@ -16,7 +16,7 @@ py-modules = ["geokdtree"]
 
 [project]
 name = "geokdtree"
-version = "1.1.0b1"
+version = "1.1.0"
 description = "Given a coordinate point, find a very close point given a set of coordinate points."
 authors = [
     {name="Connor Makowski", email="conmak@mit.edu"}
