@@ -2,16 +2,16 @@
 ===============
 Basic Scale Tests:
 ===============
-n=10 KDTree built in 0.015 ms
-n=10 KDTree found in 0.0281 ms
-n=100 KDTree built in 0.0987 ms
-n=100 KDTree found in 0.0124 ms
-n=1000 KDTree built in 1.0512 ms
-n=1000 KDTree found in 0.0143 ms
-n=10000 KDTree built in 12.5155 ms
-n=10000 KDTree found in 0.0291 ms
-n=100000 KDTree built in 144.4461 ms
-n=100000 KDTree found in 0.0374 ms
+n=10 KDTree built in 0.0091 ms
+n=10 KDTree found in 0.0019 ms
+n=100 KDTree built in 0.0548 ms
+n=100 KDTree found in 0.0014 ms
+n=1000 KDTree built in 0.7639 ms
+n=1000 KDTree found in 0.0014 ms
+n=10000 KDTree built in 10.4697 ms
+n=10000 KDTree found in 0.0029 ms
+n=100000 KDTree built in 144.2046 ms
+n=100000 KDTree found in 0.0081 ms
 
 ===============
 Basic GeoKDTree Tests:
@@ -22,15 +22,15 @@ Success: Closest point is correct.
 ===============
 GeoKDTree SCALE Tests:
 ===============
-n=1000 GeoKDTree data created in 0.4411 ms
-n=1000 GeoKDTree built in 2.4328 ms.
-n=1000 GeoKDTree found in 0.0322 ms.
-n=10000 GeoKDTree data created in 4.5471 ms
-n=10000 GeoKDTree built in 27.9167 ms.
-n=10000 GeoKDTree found in 0.037 ms.
-n=100000 GeoKDTree data created in 44.4348 ms
-n=100000 GeoKDTree built in 382.777 ms.
-n=100000 GeoKDTree found in 0.0482 ms.
-n=1000000 GeoKDTree data created in 444.4046 ms
-n=1000000 GeoKDTree built in 8943.1214 ms.
-n=1000000 GeoKDTree found in 0.0768 ms.
+n=1000 GeoKDTree data created in 0.4022 ms
+n=1000 GeoKDTree built in 1.0297 ms.
+n=1000 GeoKDTree found in 0.0021 ms.
+n=10000 GeoKDTree data created in 4.39 ms
+n=10000 GeoKDTree built in 15.5189 ms.
+n=10000 GeoKDTree found in 0.0062 ms.
+n=100000 GeoKDTree data created in 41.9395 ms
+n=100000 GeoKDTree built in 231.9322 ms.
+n=100000 GeoKDTree found in 0.0083 ms.
+n=1000000 GeoKDTree data created in 412.0517 ms
+n=1000000 GeoKDTree built in 3657.4805 ms.
+n=1000000 GeoKDTree found in 0.0114 ms.
