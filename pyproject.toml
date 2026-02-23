@@ -4,19 +4,16 @@ target-version = ['py312']
 exclude = '/.*(migrations|__pycache__).*/'
 
 [build-system]
-requires = ["skst_safe_build", "nanobind"]
-build-backend = "skst_safe_build"
+requires = ["scikit_build_core", "nanobind"]
+build-backend = "scikit_build_core.build"
 
 [tool.scikit-build]
 build.verbose = false
 build-dir = "build/{wheel_tag}"
 
-[tool.setuptools]
-py-modules = ["geokdtree"]
-
 [project]
 name = "geokdtree"
-version = "1.1.0"
+version = "1.2.0"
 description = "Given a coordinate point, find a very close point given a set of coordinate points."
 authors = [
     {name="Connor Makowski", email="conmak@mit.edu"}
