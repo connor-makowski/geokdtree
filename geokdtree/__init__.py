@@ -43,12 +43,9 @@ geo_kd_tree = GeoKDTree(points=example_points)
 
 test_point = (47.6062, -122.3321)  # Seattle
 # Find the index of the closest point in the original dataset
-closest_idx = geo_kd_tree.closest_idx(test_point)
+closest_idx = geo_kd_tree.closest_idx(test_point) #=> 2
 # Find the closest point itself
-closest_point = geo_kd_tree.closest_point(test_point)
-
-print(f"Closest index (from original data) is {closest_idx}")
-print(f"Closest point (from original data) is {closest_point}")
+closest_point = geo_kd_tree.closest_point(test_point) #=> (37.7749, -122.4194)
 ```
 
 ## Why Use GeoKDTree?
@@ -141,10 +138,6 @@ Make sure Docker is installed and running on a Unix system (Linux, MacOS, WSL2).
 
 try:
     from geokdtree.cpp import GeoKDTree, KDTree
-
-    # print("Successfully imported from geokdtree.cpp. Using optimized implementation.")
 except ImportError:
-    # TODO: Find way to warn users if they were not able to build / import the C++ extension, as this will result in significantly slower performance.
-    # print("Unable to import geokdtree.cpp, falling back to pure Python implementation. This may result in significantly slower performance.")
     from geokdtree.geokdtree import GeoKDTree
     from geokdtree.kdtree import KDTree

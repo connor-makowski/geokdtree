@@ -6,14 +6,17 @@ cp README.md geokdtree/__init__.py
 sed -i '1s/^/\"\"\"\n/' geokdtree/__init__.py
 echo "\"\"\"" >> geokdtree/__init__.py
 echo "" >> geokdtree/__init__.py
-echo "from .geokdtree import GeoKDTree" >> geokdtree/__init__.py
-echo "from .kdtree import KDTree" >> geokdtree/__init__.py
+echo "try:" >> geokdtree/__init__.py
+echo "    from geokdtree.cpp import GeoKDTree, KDTree" >> geokdtree/__init__.py
+echo "except ImportError:" >> geokdtree/__init__.py
+echo "    from geokdtree.geokdtree import GeoKDTree" >> geokdtree/__init__.py
+echo "    from geokdtree.kdtree import KDTree" >> geokdtree/__init__.py
 
 
 
 # Specify versions for documentation purposes
-VERSION="1.0.1"
-OLD_DOC_VERSIONS="1.0.0"
+VERSION="1.2.0"
+OLD_DOC_VERSIONS="1.1.0 1.0.1"
 export version_options="$VERSION $OLD_DOC_VERSIONS"
 
 # generate the docs for a version function:
