@@ -13,7 +13,7 @@ build-dir = "build/{wheel_tag}"
 
 [project]
 name = "geokdtree"
-version = "1.2.1"
+version = "1.2.2"
 description = "Given a coordinate point, find a very close point given a set of coordinate points."
 authors = [
     {name="Connor Makowski", email="conmak@mit.edu"}

@@ -6,6 +6,11 @@ cmake_minimum_required(VERSION 3.15)
 project(geokdtree LANGUAGES NONE)
 
 # -----------------------------
+# Build Options
+# -----------------------------
+option(SKIP_CPP_BUILD "Skip C++ extension module building" OFF)
+
+# -----------------------------
 # C++ detection
 # -----------------------------
 include(CheckLanguage)
@@ -15,12 +20,24 @@ if(CMAKE_CXX_COMPILER)
     enable_language(CXX)
 endif()
 
-# -----------------------------
-# If C++ is available, build extension
-# -----------------------------
-if(CMAKE_CXX_COMPILER_LOADED)
 
-    message(STATUS "C++ compiler detected: Building compiled extension.")
+if(SKIP_CPP_BUILD)
+
+        message(STATUS 
+            "C++ build skipped. Using pure python version of geokdtree. Performance will be reduced."
+        )
+
+elseif(NOT CMAKE_CXX_COMPILER_LOADED)
+
+    message(WARNING
+        "No usable C++ compiler detected. Using pure python version of geokdtree. Performance will be reduced."
+    )
+
+else()
+
+    message(STATUS 
+        "C++ compiler detected: Building compiled extension."
+    )
 
     # -----------------------------
     # Set C++ standard
@@ -53,13 +70,5 @@ if(CMAKE_CXX_COMPILER_LOADED)
         geokdtree/cpp/src/geokdtree.cpp
     )
     install(TARGETS cpp DESTINATION geokdtree)
-
-else()
-
-    message(WARNING
-        "No usable C++ compiler detected. "
-        "Building pure Python version of geokdtree. "
-        "Performance will be reduced."
-    )
 
 endif()
