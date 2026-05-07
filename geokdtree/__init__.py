@@ -26,6 +26,22 @@ It wraps a highly optimized KD-Tree with a geographic interface, allowing you to
 pip install geokdtree
 ```
 
+If you are having trouble building the C++ extension during the pip installation process, you can run:
+
+- On Mac / Linux / WSL2:
+    ```bash
+    export SKBUILD_CMAKE_ARGS="-DSKIP_CPP_BUILD=ON"
+    pip install geokdtree
+    ```
+- On Windows:
+    ```bash
+    # POWERHELL:
+    $env:SKBUILD_CMAKE_ARGS="-DSKIP_CPP_BUILD=ON"
+    # CMD:
+    set SKBUILD_CMAKE_ARGS=-DSKIP_CPP_BUILD=ON
+    pip install scgraph
+    ```
+
 ## Getting Started
 
 ```python

@@ -15,7 +15,7 @@ echo "    from geokdtree.kdtree import KDTree" >> geokdtree/__init__.py
 
 
 # Specify versions for documentation purposes
-VERSION="1.2.0"
+VERSION="1.2.3"
 OLD_DOC_VERSIONS="1.1.0 1.0.1"
 export version_options="$VERSION $OLD_DOC_VERSIONS"
 
