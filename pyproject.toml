@@ -28,7 +28,7 @@ include = [
 
 [project]
 name = "geokdtree"
-version = "1.2.4b1"
+version = "1.2.4"
 description = "Given a coordinate point, find a very close point given a set of coordinate points."
 authors = [
     {name="Connor Makowski", email="conmak@mit.edu"}
