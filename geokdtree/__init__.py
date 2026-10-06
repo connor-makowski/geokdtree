@@ -5,8 +5,6 @@
 [![PyPI Downloads](https://pepy.tech/badge/geokdtree)](https://pypi.org/project/geokdtree/)
 <!-- [![PyPI Downloads](https://img.shields.io/pypi/dm/geokdtree.svg?label=PyPI%20downloads)](https://pypi.org/project/geokdtree/) -->
 
-# GeoKDTree
-
 ## Ultra-fast nearest-neighbor lookup for latitude/longitude data
 
 **GeoKDTree** is a lightweight, high-performance spatial indexing library for Python designed to find the *nearest geographic coordinate* from massive datasets in nanoseconds.
@@ -26,7 +24,7 @@ It wraps a highly optimized KD-Tree with a geographic interface, allowing you to
 pip install geokdtree
 ```
 
-If you are having trouble building the C++ extension during the pip installation process, you can run:
+If you are having trouble building the C++ extension during the pip installation process, you can install in pure Python mode:
 
 - On Mac / Linux / WSL2:
     ```bash
@@ -35,11 +33,12 @@ If you are having trouble building the C++ extension during the pip installation
     ```
 - On Windows:
     ```bash
-    # POWERHELL:
+    # PowerShell:
     $env:SKBUILD_CMAKE_ARGS="-DSKIP_CPP_BUILD=ON"
+    pip install geokdtree
     # CMD:
     set SKBUILD_CMAKE_ARGS=-DSKIP_CPP_BUILD=ON
-    pip install scgraph
+    pip install geokdtree
     ```
 
 ## Getting Started
@@ -49,19 +48,19 @@ from geokdtree import GeoKDTree
 
 example_points = [
     (34.0522, -118.2437),  # Los Angeles
-    (40.7128, -74.0060),   # New York
+    (40.7128, -74.0060),  # New York
     (37.7749, -122.4194),  # San Francisco
-    (51.5074, -0.1278),    # London
-    (48.8566, 2.3522),     # Paris
+    (51.5074, -0.1278),  # London
+    (48.8566, 2.3522),  # Paris
 ]
 
 geo_kd_tree = GeoKDTree(points=example_points)
 
 test_point = (47.6062, -122.3321)  # Seattle
 # Find the index of the closest point in the original dataset
-closest_idx = geo_kd_tree.closest_idx(test_point) #=> 2
+closest_idx = geo_kd_tree.closest_idx(test_point)  # => 2
 # Find the closest point itself
-closest_point = geo_kd_tree.closest_point(test_point) #=> (37.7749, -122.4194)
+closest_point = geo_kd_tree.closest_point(test_point)  # => (37.7749, -122.4194)
 ```
 
 ## Why Use GeoKDTree?
@@ -74,16 +73,16 @@ It is worth noting that the closest point found may not be the true closest poin
 
 ### Extremely Fast Lookups
 
-Once constructed, nearest-neighbor queries consistently complete in **tens of nanoseconds**, even with very large datasets.
+Once constructed, nearest-neighbor queries consistently complete in **hundreds of nanoseconds to single-digit microseconds**, even with 1,000,000 coordinates.
 
-Typical benchmark results from the included tests:
+Typical benchmark results (see [benchmark.md](benchmark.md) for full benchmarks):
 
-| Number of Points | Build Time | Query Time |
-| ---------------: | ---------: | ---------: |
-|            1,000 |    ~1.7 ms |   ~0.02 ms |
-|           10,000 |     ~25 ms |   ~0.05 ms |
-|          100,000 |    ~350 ms |   ~0.05 ms |
-|        1,000,000 |     ~6.8 s |   ~0.07 ms |
+| Number of Points ($N$) | C++ Build Time | Python Build Time | C++ Query Time | Python Query Time | Query Speedup |
+| ---------------------: | -------------: | ----------------: | -------------: | ----------------: | ------------: |
+|                  1,000 |        ~1.1 ms |           ~1.6 ms |       ~0.65 µs |          ~12.5 µs |          ~19x |
+|                 10,000 |         ~15 ms |            ~21 ms |       ~0.85 µs |          ~16.1 µs |          ~19x |
+|                100,000 |        ~225 ms |           ~350 ms |        ~1.8 µs |          ~24.0 µs |          ~13x |
+|              1,000,000 |         ~3.8 s |            ~6.3 s |        ~3.2 µs |          ~31.5 µs |          ~10x |
 
 This makes GeoKDTree well-suited for:
 
@@ -92,7 +91,7 @@ This makes GeoKDTree well-suited for:
 * High-throughput geospatial APIs
 * Pre-filtering before more expensive geospatial calculations
 
-> Exact timings depend on hardware, Python version, and data distribution. These values reflect typical results from the repository’s benchmarks.
+> Exact timings depend on hardware, Python version, and data distribution. These values reflect typical results from `utils/benchmark.py`.
 
 ### Built for Geographic Coordinates
 
@@ -106,20 +105,19 @@ You do **not** need to:
 
 Just pass geographic coordinates and query.
 
-### Simple API, Minimal Overhead
+### Simple API, Zero Runtime Dependencies
 
 GeoKDTree intentionally keeps the API small and focused.
 
 * Build once from a list of coordinates
 * Query nearest neighbors with a single method call
 * Retrieve indices or points directly from your original dataset
-
-There are no external C extensions or heavy dependencies, keeping installation and deployment simple.
+* Zero external runtime dependencies, with optional C++ acceleration via `nanobind` and automatic pure Python fallback.
 
 ### Deterministic and Predictable Performance
 
-* Tree construction scales at approximately `O(n log n)`
-* Query performance scales at approximately `O(log n)`
+* Tree construction scales at approximately $O(N \log N)$
+* Query performance scales at approximately $O(\log N)$
 * No probabilistic approximations
 * No background indexing or caching
 
@@ -134,22 +132,34 @@ See: https://connor-makowski.github.io/geokdtree/geokdtree.html
 Issues, feature requests, and pull requests are welcome.
 Please open an issue to discuss changes or enhancements.
 
-# Development
-## Running Tests, Prettifying Code, and Updating Docs
+## Development
 
-Make sure Docker is installed and running on a Unix system (Linux, MacOS, WSL2).
+### Setup & Testing
 
-- Create a docker container and drop into a shell
-    - `./run.sh`
-- Run all tests (see ./utils/test.sh)
-    - `./run.sh test`
-- Prettify the code (see ./utils/prettify.sh)
-    - `./run.sh prettify`
-- Update the docs (see ./utils/docs.sh)
-    - `./run.sh docs`
+1. Clone the repository and install development dependencies:
+   ```bash
+   uv sync --extra dev --reinstall-package geokdtree
+   ```
 
-- Note: You can and should modify the `Dockerfile` to test different python versions.
+2. Run the test suite:
+   ```bash
+   uv run pytest
+   ```
 
+3. Run full test matrix across Python versions (3.11–3.14 & PyPy3.11):
+   ```bash
+   uv run nox
+   ```
+
+4. Run performance benchmarks:
+   ```bash
+   uv run python utils/benchmark.py
+   ```
+
+5. Prettify and format code:
+   ```bash
+   uv run python utils/prettify.py
+   ```
 """
 
 try:

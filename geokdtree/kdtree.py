@@ -18,7 +18,8 @@ class KDTree:
 
         - A KDTree object that can be used to find the closest point to a given point.
         """
-        self.tree = kdtree(points, depth=0, axis_count=len(points[0]))
+        self.axis_count = len(points[0]) if points else 2
+        self.tree = kdtree(points, depth=0, axis_count=self.axis_count)
 
     def closest_point(self, point):
         """
@@ -36,4 +37,4 @@ class KDTree:
 
         - The closest point found in the KDTree to the given point.
         """
-        return closest_point(self.tree, point)[0]
+        return closest_point(self.tree, point, axis_count=self.axis_count)[0]
