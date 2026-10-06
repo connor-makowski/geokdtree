@@ -8,7 +8,11 @@ root = Path(__file__).parent.parent
 geokdtree = root / "geokdtree" / "__init__.py"
 
 VERSION = "1.3.0"
-OLD_DOC_VERSIONS = ["1.2.4", "1.1.1", "1.0.1"]
+OLD_DOC_VERSIONS = [
+    "1.2.4",
+    "1.1.0",
+    "1.0.1",
+]
 
 
 def update_versions_manifest():
@@ -68,18 +72,19 @@ def generate_docs(version):
 # Build __init__.py from README
 readme = (root / "README.md").read_text()
 geokdtree.write_text(
-    f'"""\n{readme}\n"""\n\ntry:\n    from geokdtree.cpp import GeoKDTree, KDTree\nexcept ImportError:\n    from geokdtree.geokdtree import GeoKDTree\n    from geokdtree.kdtree import KDTree\n'
+    f'r"""\n{readme}\n"""\n\ntry:\n    from geokdtree.cpp import GeoKDTree, KDTree\nexcept ImportError:\n    from geokdtree.geokdtree import GeoKDTree\n    from geokdtree.kdtree import KDTree\n'
 )
 
 # Update the versions manifest loaded dynamically by client-side JS
 update_versions_manifest()
 
 # Generate current docs
+print(f"Generating docs for current version ({VERSION}) and root...")
 generate_docs("./")
 generate_docs(VERSION)
 
-# Rebuild old versions if '--rebuild-old' is passed or when executed with all
-if "--rebuild-old" in sys.argv:
+# Rebuild old versions if '--rebuild-old' is passed or when executed
+if "--rebuild-old" in sys.argv or "--all" in sys.argv:
     for version in OLD_DOC_VERSIONS:
         print(f"Rebuilding docs for version {version}...")
         generate_docs(version)

@@ -1,4 +1,4 @@
-"""
+r"""
 # GeoKDTree
 [![PyPI version](https://badge.fury.io/py/geokdtree.svg)](https://badge.fury.io/py/geokdtree)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -160,6 +160,7 @@ Please open an issue to discuss changes or enhancements.
    ```bash
    uv run python utils/prettify.py
    ```
+
 """
 
 try:
