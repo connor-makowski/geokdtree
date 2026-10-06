@@ -33,7 +33,9 @@ def test_cartesian_points_on_quadrant_boundaries(TreeClass, point, expected):
     tree = TreeClass([point])
     result = tree.closest_point_per_quadrant((0.0, 0.0))
 
-    assert {key for key, value in result.items() if value is not None} == expected
+    assert {
+        key for key, value in result.items() if value is not None
+    } == expected
     for quadrant in expected:
         assert result[quadrant] == point
 
@@ -107,13 +109,13 @@ def test_cartesian_large_finite_coordinates(TreeClass):
         ((0.0, 0.0), {"ne", "nw", "se", "sw"}),
     ],
 )
-def test_geographic_points_on_quadrant_boundaries(
-    TreeClass, point, expected
-):
+def test_geographic_points_on_quadrant_boundaries(TreeClass, point, expected):
     tree = TreeClass([point])
     result = tree.closest_idx_per_quadrant((0.0, 0.0))
 
-    assert {key for key, value in result.items() if value is not None} == expected
+    assert {
+        key for key, value in result.items() if value is not None
+    } == expected
     for quadrant in expected:
         assert result[quadrant] == 0
 

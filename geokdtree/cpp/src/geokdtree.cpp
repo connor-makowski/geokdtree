@@ -265,7 +265,7 @@ void KDTree::find_closest_2d(
 std::pair<double, double> KDTree::closest_point_2d(double px, double py) const {
     if (root < 0) throw std::runtime_error("KDTree is empty");
     int best_node = -1;
-    double best_dist = std::numeric_limits<double>::infinity();
+    double best_dist = std::numeric_limits<double>::max();
     find_closest_2d(root, px, py, best_node, best_dist);
     return {nodes_2d[best_node].x, nodes_2d[best_node].y};
 }
@@ -306,7 +306,7 @@ std::vector<double> KDTree::closest_point(const std::vector<double>& point) cons
         return {res.first, res.second};
     }
     std::vector<double> best;
-    double best_dist = std::numeric_limits<double>::infinity();
+    double best_dist = std::numeric_limits<double>::max();
     find_closest_nd(root, point, best, best_dist, dimensions);
     return best;
 }
@@ -319,10 +319,10 @@ void KDTree::closest_point_per_quadrant_2d_raw(
     if (root < 0) throw std::runtime_error("KDTree is empty");
     best_indices[0] = best_indices[1] = best_indices[2] = best_indices[3] = -1;
     double best_dists[4] = {
-        std::numeric_limits<double>::infinity(),
-        std::numeric_limits<double>::infinity(),
-        std::numeric_limits<double>::infinity(),
-        std::numeric_limits<double>::infinity()
+        std::numeric_limits<double>::max(),
+        std::numeric_limits<double>::max(),
+        std::numeric_limits<double>::max(),
+        std::numeric_limits<double>::max()
     };
     find_closest_point_per_quadrant_2d(root, px, py, 15, best_indices, best_dists);
 }
@@ -537,7 +537,7 @@ int GeoKDTree::closest_idx(double lat, double lon) const {
     double lat_rad = lat * PI / 180.0, lon_rad = lon * PI / 180.0;
     double cos_lat = std::cos(lat_rad);
     int best_idx = -1;
-    double best_dist = std::numeric_limits<double>::infinity();
+    double best_dist = std::numeric_limits<double>::max();
     find_closest_3d(root, cos_lat * std::cos(lon_rad), cos_lat * std::sin(lon_rad), std::sin(lat_rad), best_idx, best_dist);
     return best_idx;
 }
@@ -565,10 +565,10 @@ void GeoKDTree::closest_idx_per_quadrant_raw(
     double cos_lat = std::cos(lat_rad);
     best_indices[0] = best_indices[1] = best_indices[2] = best_indices[3] = -1;
     double best_dists[4] = {
-        std::numeric_limits<double>::infinity(),
-        std::numeric_limits<double>::infinity(),
-        std::numeric_limits<double>::infinity(),
-        std::numeric_limits<double>::infinity()
+        std::numeric_limits<double>::max(),
+        std::numeric_limits<double>::max(),
+        std::numeric_limits<double>::max(),
+        std::numeric_limits<double>::max()
     };
     find_closest_point_per_quadrant_3d(
         root, cos_lat * std::cos(lon_rad), cos_lat * std::sin(lon_rad), std::sin(lat_rad),

@@ -24,14 +24,13 @@ set(CMAKE_BUILD_TYPE Release)
 if(MSVC)
     set(CMAKE_CXX_FLAGS_RELEASE "/O2 /DNDEBUG")
 else()
-    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -ffast-math -fomit-frame-pointer")
+    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -fno-math-errno -fomit-frame-pointer")
 endif()
 
 # -----------------------------
 # GeoKDTree module
 # -----------------------------
 nanobind_add_module(cpp
-    STABLE_ABI
     geokdtree/cpp/bindings/geokdtree_bindings.cpp
     geokdtree/cpp/src/geokdtree.cpp
 )
