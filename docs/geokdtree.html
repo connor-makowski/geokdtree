@@ -206,6 +206,10 @@ pip install --no-binary geokdtree geokdtree
 <span class="n">closest_idx</span> <span class="o">=</span> <span class="n">geo_kd_tree</span><span class="o">.</span><span class="n">closest_idx</span><span class="p">(</span><span class="n">test_point</span><span class="p">)</span>  <span class="c1"># =&gt; 2</span>
 <span class="c1"># Find the closest point itself</span>
 <span class="n">closest_point</span> <span class="o">=</span> <span class="n">geo_kd_tree</span><span class="o">.</span><span class="n">closest_point</span><span class="p">(</span><span class="n">test_point</span><span class="p">)</span>  <span class="c1"># =&gt; (37.7749, -122.4194)</span>
+
+<span class="c1"># Find closest points in each quadrant (ne, nw, se, sw)</span>
+<span class="n">quadrants</span> <span class="o">=</span> <span class="n">geo_kd_tree</span><span class="o">.</span><span class="n">closest_point_per_quadrant</span><span class="p">(</span><span class="n">test_point</span><span class="p">)</span>
+<span class="c1"># =&gt; {'ne': (51.5074, -0.1278), 'nw': None, 'se': (40.7128, -74.006), 'sw': (37.7749, -122.4194)}</span>
 </code></pre>
 </div>
 
@@ -450,113 +454,123 @@ Please open an issue to discuss changes or enhancements.</p>
 </span><span id="L-74"><a href="#L-74"><span class="linenos"> 74</span></a><span class="sd">closest_idx = geo_kd_tree.closest_idx(test_point)  # =&gt; 2</span>
 </span><span id="L-75"><a href="#L-75"><span class="linenos"> 75</span></a><span class="sd"># Find the closest point itself</span>
 </span><span id="L-76"><a href="#L-76"><span class="linenos"> 76</span></a><span class="sd">closest_point = geo_kd_tree.closest_point(test_point)  # =&gt; (37.7749, -122.4194)</span>
-</span><span id="L-77"><a href="#L-77"><span class="linenos"> 77</span></a><span class="sd">```</span>
-</span><span id="L-78"><a href="#L-78"><span class="linenos"> 78</span></a>
-</span><span id="L-79"><a href="#L-79"><span class="linenos"> 79</span></a><span class="sd">## Why Use GeoKDTree?</span>
-</span><span id="L-80"><a href="#L-80"><span class="linenos"> 80</span></a>
-</span><span id="L-81"><a href="#L-81"><span class="linenos"> 81</span></a><span class="sd">GeoKDTree is designed to solve one focused problem extremely well:</span>
+</span><span id="L-77"><a href="#L-77"><span class="linenos"> 77</span></a>
+</span><span id="L-78"><a href="#L-78"><span class="linenos"> 78</span></a><span class="sd"># Find closest points in each quadrant (ne, nw, se, sw)</span>
+</span><span id="L-79"><a href="#L-79"><span class="linenos"> 79</span></a><span class="sd">quadrants = geo_kd_tree.closest_point_per_quadrant(test_point)</span>
+</span><span id="L-80"><a href="#L-80"><span class="linenos"> 80</span></a><span class="sd"># =&gt; {'ne': (51.5074, -0.1278), 'nw': None, 'se': (40.7128, -74.006), 'sw': (37.7749, -122.4194)}</span>
+</span><span id="L-81"><a href="#L-81"><span class="linenos"> 81</span></a><span class="sd">```</span>
 </span><span id="L-82"><a href="#L-82"><span class="linenos"> 82</span></a>
-</span><span id="L-83"><a href="#L-83"><span class="linenos"> 83</span></a><span class="sd">**Fast nearest-neighbor lookup for latitude/longitude data at scale.**</span>
+</span><span id="L-83"><a href="#L-83"><span class="linenos"> 83</span></a><span class="sd">## Why Use GeoKDTree?</span>
 </span><span id="L-84"><a href="#L-84"><span class="linenos"> 84</span></a>
-</span><span id="L-85"><a href="#L-85"><span class="linenos"> 85</span></a><span class="sd">It is worth noting that the closest point found may not be the true closest point, but should be very close for most practical applications. See KD-Tree limitations for more details.</span>
+</span><span id="L-85"><a href="#L-85"><span class="linenos"> 85</span></a><span class="sd">GeoKDTree is designed to solve one focused problem extremely well:</span>
 </span><span id="L-86"><a href="#L-86"><span class="linenos"> 86</span></a>
-</span><span id="L-87"><a href="#L-87"><span class="linenos"> 87</span></a><span class="sd">### Extremely Fast Lookups</span>
+</span><span id="L-87"><a href="#L-87"><span class="linenos"> 87</span></a><span class="sd">**Fast nearest-neighbor lookup for latitude/longitude data at scale.**</span>
 </span><span id="L-88"><a href="#L-88"><span class="linenos"> 88</span></a>
-</span><span id="L-89"><a href="#L-89"><span class="linenos"> 89</span></a><span class="sd">Once constructed, nearest-neighbor queries consistently complete in **hundreds of nanoseconds to single-digit microseconds**, even with 1,000,000 coordinates.</span>
+</span><span id="L-89"><a href="#L-89"><span class="linenos"> 89</span></a><span class="sd">It is worth noting that the closest point found may not be the true closest point, but should be very close for most practical applications. See KD-Tree limitations for more details.</span>
 </span><span id="L-90"><a href="#L-90"><span class="linenos"> 90</span></a>
-</span><span id="L-91"><a href="#L-91"><span class="linenos"> 91</span></a><span class="sd">Typical benchmark results (see [benchmark.md](benchmark.md) for full benchmarks):</span>
+</span><span id="L-91"><a href="#L-91"><span class="linenos"> 91</span></a><span class="sd">### Extremely Fast Lookups</span>
 </span><span id="L-92"><a href="#L-92"><span class="linenos"> 92</span></a>
-</span><span id="L-93"><a href="#L-93"><span class="linenos"> 93</span></a><span class="sd">| Number of Points ($N$) | C++ Build Time | Python Build Time | C++ Query Time | Python Query Time | Query Speedup |</span>
-</span><span id="L-94"><a href="#L-94"><span class="linenos"> 94</span></a><span class="sd">| ---------------------: | -------------: | ----------------: | -------------: | ----------------: | ------------: |</span>
-</span><span id="L-95"><a href="#L-95"><span class="linenos"> 95</span></a><span class="sd">|                  1,000 |        ~1.1 ms |           ~1.6 ms |       ~0.65 µs |          ~12.5 µs |          ~19x |</span>
-</span><span id="L-96"><a href="#L-96"><span class="linenos"> 96</span></a><span class="sd">|                 10,000 |         ~15 ms |            ~21 ms |       ~0.85 µs |          ~16.1 µs |          ~19x |</span>
-</span><span id="L-97"><a href="#L-97"><span class="linenos"> 97</span></a><span class="sd">|                100,000 |        ~225 ms |           ~350 ms |        ~1.8 µs |          ~24.0 µs |          ~13x |</span>
-</span><span id="L-98"><a href="#L-98"><span class="linenos"> 98</span></a><span class="sd">|              1,000,000 |         ~3.8 s |            ~6.3 s |        ~3.2 µs |          ~31.5 µs |          ~10x |</span>
-</span><span id="L-99"><a href="#L-99"><span class="linenos"> 99</span></a>
-</span><span id="L-100"><a href="#L-100"><span class="linenos">100</span></a><span class="sd">This makes GeoKDTree well-suited for:</span>
-</span><span id="L-101"><a href="#L-101"><span class="linenos">101</span></a>
-</span><span id="L-102"><a href="#L-102"><span class="linenos">102</span></a><span class="sd">* Real-time proximity queries</span>
-</span><span id="L-103"><a href="#L-103"><span class="linenos">103</span></a><span class="sd">* Matching incoming coordinates against large reference datasets</span>
-</span><span id="L-104"><a href="#L-104"><span class="linenos">104</span></a><span class="sd">* High-throughput geospatial APIs</span>
-</span><span id="L-105"><a href="#L-105"><span class="linenos">105</span></a><span class="sd">* Pre-filtering before more expensive geospatial calculations</span>
-</span><span id="L-106"><a href="#L-106"><span class="linenos">106</span></a>
-</span><span id="L-107"><a href="#L-107"><span class="linenos">107</span></a><span class="sd">&gt; Exact timings depend on hardware, Python version, and data distribution. These values reflect typical results from `utils/benchmark.py`.</span>
-</span><span id="L-108"><a href="#L-108"><span class="linenos">108</span></a>
-</span><span id="L-109"><a href="#L-109"><span class="linenos">109</span></a><span class="sd">### Built for Geographic Coordinates</span>
+</span><span id="L-93"><a href="#L-93"><span class="linenos"> 93</span></a><span class="sd">Once constructed, nearest-neighbor queries consistently complete in **hundreds of nanoseconds to single-digit microseconds**, even with 1,000,000 coordinates.</span>
+</span><span id="L-94"><a href="#L-94"><span class="linenos"> 94</span></a>
+</span><span id="L-95"><a href="#L-95"><span class="linenos"> 95</span></a><span class="sd">Typical benchmark results (see [benchmark.md](benchmark.md) for full benchmarks):</span>
+</span><span id="L-96"><a href="#L-96"><span class="linenos"> 96</span></a>
+</span><span id="L-97"><a href="#L-97"><span class="linenos"> 97</span></a><span class="sd">| Number of Points ($N$) | C++ Build Time | Python Build Time | C++ Query Time | Python Query Time | Query Speedup |</span>
+</span><span id="L-98"><a href="#L-98"><span class="linenos"> 98</span></a><span class="sd">| ---------------------: | -------------: | ----------------: | -------------: | ----------------: | ------------: |</span>
+</span><span id="L-99"><a href="#L-99"><span class="linenos"> 99</span></a><span class="sd">|                  1,000 |        ~1.1 ms |           ~1.6 ms |       ~0.65 µs |          ~12.5 µs |          ~19x |</span>
+</span><span id="L-100"><a href="#L-100"><span class="linenos">100</span></a><span class="sd">|                 10,000 |         ~15 ms |            ~21 ms |       ~0.85 µs |          ~16.1 µs |          ~19x |</span>
+</span><span id="L-101"><a href="#L-101"><span class="linenos">101</span></a><span class="sd">|                100,000 |        ~225 ms |           ~350 ms |        ~1.8 µs |          ~24.0 µs |          ~13x |</span>
+</span><span id="L-102"><a href="#L-102"><span class="linenos">102</span></a><span class="sd">|              1,000,000 |         ~3.8 s |            ~6.3 s |        ~3.2 µs |          ~31.5 µs |          ~10x |</span>
+</span><span id="L-103"><a href="#L-103"><span class="linenos">103</span></a>
+</span><span id="L-104"><a href="#L-104"><span class="linenos">104</span></a><span class="sd">This makes GeoKDTree well-suited for:</span>
+</span><span id="L-105"><a href="#L-105"><span class="linenos">105</span></a>
+</span><span id="L-106"><a href="#L-106"><span class="linenos">106</span></a><span class="sd">* Real-time proximity queries</span>
+</span><span id="L-107"><a href="#L-107"><span class="linenos">107</span></a><span class="sd">* Matching incoming coordinates against large reference datasets</span>
+</span><span id="L-108"><a href="#L-108"><span class="linenos">108</span></a><span class="sd">* High-throughput geospatial APIs</span>
+</span><span id="L-109"><a href="#L-109"><span class="linenos">109</span></a><span class="sd">* Pre-filtering before more expensive geospatial calculations</span>
 </span><span id="L-110"><a href="#L-110"><span class="linenos">110</span></a>
-</span><span id="L-111"><a href="#L-111"><span class="linenos">111</span></a><span class="sd">GeoKDTree works directly with `(latitude, longitude)` pairs.</span>
+</span><span id="L-111"><a href="#L-111"><span class="linenos">111</span></a><span class="sd">&gt; Exact timings depend on hardware, Python version, and data distribution. These values reflect typical results from `utils/benchmark.py`.</span>
 </span><span id="L-112"><a href="#L-112"><span class="linenos">112</span></a>
-</span><span id="L-113"><a href="#L-113"><span class="linenos">113</span></a><span class="sd">You do **not** need to:</span>
+</span><span id="L-113"><a href="#L-113"><span class="linenos">113</span></a><span class="sd">### Built for Geographic Coordinates</span>
 </span><span id="L-114"><a href="#L-114"><span class="linenos">114</span></a>
-</span><span id="L-115"><a href="#L-115"><span class="linenos">115</span></a><span class="sd">* Project coordinates into planar space</span>
-</span><span id="L-116"><a href="#L-116"><span class="linenos">116</span></a><span class="sd">* Use heavyweight GIS libraries</span>
-</span><span id="L-117"><a href="#L-117"><span class="linenos">117</span></a><span class="sd">* Maintain custom spatial indexing code</span>
+</span><span id="L-115"><a href="#L-115"><span class="linenos">115</span></a><span class="sd">GeoKDTree works directly with `(latitude, longitude)` pairs.</span>
+</span><span id="L-116"><a href="#L-116"><span class="linenos">116</span></a>
+</span><span id="L-117"><a href="#L-117"><span class="linenos">117</span></a><span class="sd">You do **not** need to:</span>
 </span><span id="L-118"><a href="#L-118"><span class="linenos">118</span></a>
-</span><span id="L-119"><a href="#L-119"><span class="linenos">119</span></a><span class="sd">Just pass geographic coordinates and query.</span>
-</span><span id="L-120"><a href="#L-120"><span class="linenos">120</span></a>
-</span><span id="L-121"><a href="#L-121"><span class="linenos">121</span></a><span class="sd">### Simple API, Zero Runtime Dependencies</span>
+</span><span id="L-119"><a href="#L-119"><span class="linenos">119</span></a><span class="sd">* Project coordinates into planar space</span>
+</span><span id="L-120"><a href="#L-120"><span class="linenos">120</span></a><span class="sd">* Use heavyweight GIS libraries</span>
+</span><span id="L-121"><a href="#L-121"><span class="linenos">121</span></a><span class="sd">* Maintain custom spatial indexing code</span>
 </span><span id="L-122"><a href="#L-122"><span class="linenos">122</span></a>
-</span><span id="L-123"><a href="#L-123"><span class="linenos">123</span></a><span class="sd">GeoKDTree intentionally keeps the API small and focused.</span>
+</span><span id="L-123"><a href="#L-123"><span class="linenos">123</span></a><span class="sd">Just pass geographic coordinates and query.</span>
 </span><span id="L-124"><a href="#L-124"><span class="linenos">124</span></a>
-</span><span id="L-125"><a href="#L-125"><span class="linenos">125</span></a><span class="sd">* Build once from a list of coordinates</span>
-</span><span id="L-126"><a href="#L-126"><span class="linenos">126</span></a><span class="sd">* Query nearest neighbors with a single method call</span>
-</span><span id="L-127"><a href="#L-127"><span class="linenos">127</span></a><span class="sd">* Retrieve indices or points directly from your original dataset</span>
-</span><span id="L-128"><a href="#L-128"><span class="linenos">128</span></a><span class="sd">* Zero external runtime dependencies, with optional C++ acceleration via `nanobind` and automatic pure Python fallback.</span>
-</span><span id="L-129"><a href="#L-129"><span class="linenos">129</span></a>
-</span><span id="L-130"><a href="#L-130"><span class="linenos">130</span></a><span class="sd">### Deterministic and Predictable Performance</span>
-</span><span id="L-131"><a href="#L-131"><span class="linenos">131</span></a>
-</span><span id="L-132"><a href="#L-132"><span class="linenos">132</span></a><span class="sd">* Tree construction scales at approximately $O(N \log N)$</span>
-</span><span id="L-133"><a href="#L-133"><span class="linenos">133</span></a><span class="sd">* Query performance scales at approximately $O(\log N)$</span>
-</span><span id="L-134"><a href="#L-134"><span class="linenos">134</span></a><span class="sd">* No probabilistic approximations</span>
-</span><span id="L-135"><a href="#L-135"><span class="linenos">135</span></a><span class="sd">* No background indexing or caching</span>
-</span><span id="L-136"><a href="#L-136"><span class="linenos">136</span></a>
-</span><span id="L-137"><a href="#L-137"><span class="linenos">137</span></a><span class="sd">This predictability is valuable for production systems where latency and reproducibility matter.</span>
-</span><span id="L-138"><a href="#L-138"><span class="linenos">138</span></a>
-</span><span id="L-139"><a href="#L-139"><span class="linenos">139</span></a><span class="sd">## Supported Features</span>
+</span><span id="L-125"><a href="#L-125"><span class="linenos">125</span></a><span class="sd">### Simple API, Zero Runtime Dependencies</span>
+</span><span id="L-126"><a href="#L-126"><span class="linenos">126</span></a>
+</span><span id="L-127"><a href="#L-127"><span class="linenos">127</span></a><span class="sd">GeoKDTree intentionally keeps the API small and focused.</span>
+</span><span id="L-128"><a href="#L-128"><span class="linenos">128</span></a>
+</span><span id="L-129"><a href="#L-129"><span class="linenos">129</span></a><span class="sd">* Build once from a list of coordinates</span>
+</span><span id="L-130"><a href="#L-130"><span class="linenos">130</span></a><span class="sd">* Query nearest neighbors with a single method call</span>
+</span><span id="L-131"><a href="#L-131"><span class="linenos">131</span></a><span class="sd">* Retrieve indices or points directly from your original dataset</span>
+</span><span id="L-132"><a href="#L-132"><span class="linenos">132</span></a><span class="sd">* Zero external runtime dependencies, with optional C++ acceleration via `nanobind` and automatic pure Python fallback.</span>
+</span><span id="L-133"><a href="#L-133"><span class="linenos">133</span></a>
+</span><span id="L-134"><a href="#L-134"><span class="linenos">134</span></a><span class="sd">### Deterministic and Predictable Performance</span>
+</span><span id="L-135"><a href="#L-135"><span class="linenos">135</span></a>
+</span><span id="L-136"><a href="#L-136"><span class="linenos">136</span></a><span class="sd">* Tree construction scales at approximately $O(N \log N)$</span>
+</span><span id="L-137"><a href="#L-137"><span class="linenos">137</span></a><span class="sd">* Query performance scales at approximately $O(\log N)$</span>
+</span><span id="L-138"><a href="#L-138"><span class="linenos">138</span></a><span class="sd">* No probabilistic approximations</span>
+</span><span id="L-139"><a href="#L-139"><span class="linenos">139</span></a><span class="sd">* No background indexing or caching</span>
 </span><span id="L-140"><a href="#L-140"><span class="linenos">140</span></a>
-</span><span id="L-141"><a href="#L-141"><span class="linenos">141</span></a><span class="sd">See: https://connor-makowski.github.io/geokdtree/geokdtree.html</span>
+</span><span id="L-141"><a href="#L-141"><span class="linenos">141</span></a><span class="sd">This predictability is valuable for production systems where latency and reproducibility matter.</span>
 </span><span id="L-142"><a href="#L-142"><span class="linenos">142</span></a>
-</span><span id="L-143"><a href="#L-143"><span class="linenos">143</span></a><span class="sd">## Contributing</span>
+</span><span id="L-143"><a href="#L-143"><span class="linenos">143</span></a><span class="sd">## Supported Features</span>
 </span><span id="L-144"><a href="#L-144"><span class="linenos">144</span></a>
-</span><span id="L-145"><a href="#L-145"><span class="linenos">145</span></a><span class="sd">Issues, feature requests, and pull requests are welcome.</span>
-</span><span id="L-146"><a href="#L-146"><span class="linenos">146</span></a><span class="sd">Please open an issue to discuss changes or enhancements.</span>
-</span><span id="L-147"><a href="#L-147"><span class="linenos">147</span></a>
-</span><span id="L-148"><a href="#L-148"><span class="linenos">148</span></a><span class="sd">## Development</span>
-</span><span id="L-149"><a href="#L-149"><span class="linenos">149</span></a>
-</span><span id="L-150"><a href="#L-150"><span class="linenos">150</span></a><span class="sd">### Setup &amp; Testing</span>
+</span><span id="L-145"><a href="#L-145"><span class="linenos">145</span></a><span class="sd">See: https://connor-makowski.github.io/geokdtree/geokdtree.html</span>
+</span><span id="L-146"><a href="#L-146"><span class="linenos">146</span></a>
+</span><span id="L-147"><a href="#L-147"><span class="linenos">147</span></a><span class="sd">## Contributing</span>
+</span><span id="L-148"><a href="#L-148"><span class="linenos">148</span></a>
+</span><span id="L-149"><a href="#L-149"><span class="linenos">149</span></a><span class="sd">Issues, feature requests, and pull requests are welcome.</span>
+</span><span id="L-150"><a href="#L-150"><span class="linenos">150</span></a><span class="sd">Please open an issue to discuss changes or enhancements.</span>
 </span><span id="L-151"><a href="#L-151"><span class="linenos">151</span></a>
-</span><span id="L-152"><a href="#L-152"><span class="linenos">152</span></a><span class="sd">1. Clone the repository and install development dependencies:</span>
-</span><span id="L-153"><a href="#L-153"><span class="linenos">153</span></a><span class="sd">   ```bash</span>
-</span><span id="L-154"><a href="#L-154"><span class="linenos">154</span></a><span class="sd">   uv sync --extra dev --reinstall-package geokdtree</span>
-</span><span id="L-155"><a href="#L-155"><span class="linenos">155</span></a><span class="sd">   ```</span>
-</span><span id="L-156"><a href="#L-156"><span class="linenos">156</span></a>
-</span><span id="L-157"><a href="#L-157"><span class="linenos">157</span></a><span class="sd">2. Run the test suite:</span>
-</span><span id="L-158"><a href="#L-158"><span class="linenos">158</span></a><span class="sd">   ```bash</span>
-</span><span id="L-159"><a href="#L-159"><span class="linenos">159</span></a><span class="sd">   uv run pytest</span>
-</span><span id="L-160"><a href="#L-160"><span class="linenos">160</span></a><span class="sd">   ```</span>
-</span><span id="L-161"><a href="#L-161"><span class="linenos">161</span></a>
-</span><span id="L-162"><a href="#L-162"><span class="linenos">162</span></a><span class="sd">3. Run full test matrix across Python versions (3.11–3.14 &amp; PyPy3.11):</span>
-</span><span id="L-163"><a href="#L-163"><span class="linenos">163</span></a><span class="sd">   ```bash</span>
-</span><span id="L-164"><a href="#L-164"><span class="linenos">164</span></a><span class="sd">   uv run nox</span>
-</span><span id="L-165"><a href="#L-165"><span class="linenos">165</span></a><span class="sd">   ```</span>
-</span><span id="L-166"><a href="#L-166"><span class="linenos">166</span></a>
-</span><span id="L-167"><a href="#L-167"><span class="linenos">167</span></a><span class="sd">4. Run performance benchmarks:</span>
-</span><span id="L-168"><a href="#L-168"><span class="linenos">168</span></a><span class="sd">   ```bash</span>
-</span><span id="L-169"><a href="#L-169"><span class="linenos">169</span></a><span class="sd">   uv run python utils/benchmark.py</span>
-</span><span id="L-170"><a href="#L-170"><span class="linenos">170</span></a><span class="sd">   ```</span>
-</span><span id="L-171"><a href="#L-171"><span class="linenos">171</span></a>
-</span><span id="L-172"><a href="#L-172"><span class="linenos">172</span></a><span class="sd">5. Prettify and format code:</span>
-</span><span id="L-173"><a href="#L-173"><span class="linenos">173</span></a><span class="sd">   ```bash</span>
-</span><span id="L-174"><a href="#L-174"><span class="linenos">174</span></a><span class="sd">   uv run python utils/prettify.py</span>
-</span><span id="L-175"><a href="#L-175"><span class="linenos">175</span></a><span class="sd">   ```</span>
-</span><span id="L-176"><a href="#L-176"><span class="linenos">176</span></a>
-</span><span id="L-177"><a href="#L-177"><span class="linenos">177</span></a><span class="sd">"""</span>
-</span><span id="L-178"><a href="#L-178"><span class="linenos">178</span></a>
-</span><span id="L-179"><a href="#L-179"><span class="linenos">179</span></a><span class="k">try</span><span class="p">:</span>
-</span><span id="L-180"><a href="#L-180"><span class="linenos">180</span></a>    <span class="kn">from</span><span class="w"> </span><span class="nn">geokdtree.cpp</span><span class="w"> </span><span class="kn">import</span> <span class="n">GeoKDTree</span><span class="p">,</span> <span class="n">KDTree</span>
-</span><span id="L-181"><a href="#L-181"><span class="linenos">181</span></a><span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
-</span><span id="L-182"><a href="#L-182"><span class="linenos">182</span></a>    <span class="kn">from</span><span class="w"> </span><span class="nn">geokdtree.geokdtree</span><span class="w"> </span><span class="kn">import</span> <span class="n">GeoKDTree</span>
-</span><span id="L-183"><a href="#L-183"><span class="linenos">183</span></a>    <span class="kn">from</span><span class="w"> </span><span class="nn">geokdtree.kdtree</span><span class="w"> </span><span class="kn">import</span> <span class="n">KDTree</span>
+</span><span id="L-152"><a href="#L-152"><span class="linenos">152</span></a><span class="sd">## Development</span>
+</span><span id="L-153"><a href="#L-153"><span class="linenos">153</span></a>
+</span><span id="L-154"><a href="#L-154"><span class="linenos">154</span></a><span class="sd">### Setup &amp; Testing</span>
+</span><span id="L-155"><a href="#L-155"><span class="linenos">155</span></a>
+</span><span id="L-156"><a href="#L-156"><span class="linenos">156</span></a><span class="sd">1. Clone the repository and install development dependencies:</span>
+</span><span id="L-157"><a href="#L-157"><span class="linenos">157</span></a><span class="sd">   ```bash</span>
+</span><span id="L-158"><a href="#L-158"><span class="linenos">158</span></a><span class="sd">   uv sync --extra dev --reinstall-package geokdtree</span>
+</span><span id="L-159"><a href="#L-159"><span class="linenos">159</span></a><span class="sd">   ```</span>
+</span><span id="L-160"><a href="#L-160"><span class="linenos">160</span></a>
+</span><span id="L-161"><a href="#L-161"><span class="linenos">161</span></a><span class="sd">2. Run the test suite:</span>
+</span><span id="L-162"><a href="#L-162"><span class="linenos">162</span></a><span class="sd">   ```bash</span>
+</span><span id="L-163"><a href="#L-163"><span class="linenos">163</span></a><span class="sd">   uv run pytest</span>
+</span><span id="L-164"><a href="#L-164"><span class="linenos">164</span></a><span class="sd">   ```</span>
+</span><span id="L-165"><a href="#L-165"><span class="linenos">165</span></a>
+</span><span id="L-166"><a href="#L-166"><span class="linenos">166</span></a><span class="sd">3. Run full test matrix across Python versions (3.11–3.14 &amp; PyPy3.11):</span>
+</span><span id="L-167"><a href="#L-167"><span class="linenos">167</span></a><span class="sd">   ```bash</span>
+</span><span id="L-168"><a href="#L-168"><span class="linenos">168</span></a><span class="sd">   uv run nox</span>
+</span><span id="L-169"><a href="#L-169"><span class="linenos">169</span></a><span class="sd">   ```</span>
+</span><span id="L-170"><a href="#L-170"><span class="linenos">170</span></a>
+</span><span id="L-171"><a href="#L-171"><span class="linenos">171</span></a><span class="sd">4. Run performance benchmarks:</span>
+</span><span id="L-172"><a href="#L-172"><span class="linenos">172</span></a><span class="sd">   ```bash</span>
+</span><span id="L-173"><a href="#L-173"><span class="linenos">173</span></a><span class="sd">   uv run python utils/benchmark.py</span>
+</span><span id="L-174"><a href="#L-174"><span class="linenos">174</span></a><span class="sd">   ```</span>
+</span><span id="L-175"><a href="#L-175"><span class="linenos">175</span></a>
+</span><span id="L-176"><a href="#L-176"><span class="linenos">176</span></a><span class="sd">5. Prettify and format code:</span>
+</span><span id="L-177"><a href="#L-177"><span class="linenos">177</span></a><span class="sd">   ```bash</span>
+</span><span id="L-178"><a href="#L-178"><span class="linenos">178</span></a><span class="sd">   uv run python utils/prettify.py</span>
+</span><span id="L-179"><a href="#L-179"><span class="linenos">179</span></a><span class="sd">   ```</span>
+</span><span id="L-180"><a href="#L-180"><span class="linenos">180</span></a>
+</span><span id="L-181"><a href="#L-181"><span class="linenos">181</span></a><span class="sd">"""</span>
+</span><span id="L-182"><a href="#L-182"><span class="linenos">182</span></a>
+</span><span id="L-183"><a href="#L-183"><span class="linenos">183</span></a><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+</span><span id="L-184"><a href="#L-184"><span class="linenos">184</span></a>
+</span><span id="L-185"><a href="#L-185"><span class="linenos">185</span></a><span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"GEOKDTREE_REQUIRE_PYTHON"</span><span class="p">)</span> <span class="o">==</span> <span class="s2">"1"</span><span class="p">:</span>
+</span><span id="L-186"><a href="#L-186"><span class="linenos">186</span></a>    <span class="kn">from</span><span class="w"> </span><span class="nn">geokdtree.geokdtree</span><span class="w"> </span><span class="kn">import</span> <span class="n">GeoKDTree</span>
+</span><span id="L-187"><a href="#L-187"><span class="linenos">187</span></a>    <span class="kn">from</span><span class="w"> </span><span class="nn">geokdtree.kdtree</span><span class="w"> </span><span class="kn">import</span> <span class="n">KDTree</span>
+</span><span id="L-188"><a href="#L-188"><span class="linenos">188</span></a><span class="k">else</span><span class="p">:</span>
+</span><span id="L-189"><a href="#L-189"><span class="linenos">189</span></a>    <span class="k">try</span><span class="p">:</span>
+</span><span id="L-190"><a href="#L-190"><span class="linenos">190</span></a>        <span class="kn">from</span><span class="w"> </span><span class="nn">geokdtree.cpp</span><span class="w"> </span><span class="kn">import</span> <span class="n">GeoKDTree</span><span class="p">,</span> <span class="n">KDTree</span>
+</span><span id="L-191"><a href="#L-191"><span class="linenos">191</span></a>    <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+</span><span id="L-192"><a href="#L-192"><span class="linenos">192</span></a>        <span class="kn">from</span><span class="w"> </span><span class="nn">geokdtree.geokdtree</span><span class="w"> </span><span class="kn">import</span> <span class="n">GeoKDTree</span>
+</span><span id="L-193"><a href="#L-193"><span class="linenos">193</span></a>        <span class="kn">from</span><span class="w"> </span><span class="nn">geokdtree.kdtree</span><span class="w"> </span><span class="kn">import</span> <span class="n">KDTree</span>
 </span></pre></div>
 
 

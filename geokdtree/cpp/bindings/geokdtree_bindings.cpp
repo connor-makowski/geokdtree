@@ -10,9 +10,17 @@
 
 namespace nb = nanobind;
 
+#if defined(__GNUC__) || defined(__clang__)
+#  define GEOKDTREE_LIKELY(x)   __builtin_expect(!!(x), 1)
+#  define GEOKDTREE_UNLIKELY(x) __builtin_expect(!!(x), 0)
+#else
+#  define GEOKDTREE_LIKELY(x)   (x)
+#  define GEOKDTREE_UNLIKELY(x) (x)
+#endif
+
 namespace {
 inline bool extract_double(PyObject* obj, double& out) noexcept {
-    if (__builtin_expect(PyFloat_CheckExact(obj), 1)) {
+    if (GEOKDTREE_LIKELY(PyFloat_CheckExact(obj))) {
         out = PyFloat_AS_DOUBLE(obj);
         return true;
     }
@@ -33,12 +41,12 @@ inline bool extract_double(PyObject* obj, double& out) noexcept {
 
 inline std::pair<double, double> parse_point2d(nb::handle h) {
     PyObject* obj = h.ptr();
-    if (__builtin_expect(PyTuple_CheckExact(obj), 1)) {
-        if (__builtin_expect(PyTuple_GET_SIZE(obj) == 2, 1)) {
+    if (GEOKDTREE_LIKELY(PyTuple_CheckExact(obj))) {
+        if (GEOKDTREE_LIKELY(PyTuple_GET_SIZE(obj) == 2)) {
             PyObject* p0 = PyTuple_GET_ITEM(obj, 0);
             PyObject* p1 = PyTuple_GET_ITEM(obj, 1);
             double d0, d1;
-            if (__builtin_expect(extract_double(p0, d0) && extract_double(p1, d1), 1)) {
+            if (GEOKDTREE_LIKELY(extract_double(p0, d0) && extract_double(p1, d1))) {
                 return {d0, d1};
             }
         }
@@ -47,7 +55,7 @@ inline std::pair<double, double> parse_point2d(nb::handle h) {
             PyObject* p0 = PyList_GET_ITEM(obj, 0);
             PyObject* p1 = PyList_GET_ITEM(obj, 1);
             double d0, d1;
-            if (__builtin_expect(extract_double(p0, d0) && extract_double(p1, d1), 1)) {
+            if (GEOKDTREE_LIKELY(extract_double(p0, d0) && extract_double(p1, d1))) {
                 return {d0, d1};
             }
         }
@@ -101,10 +109,10 @@ inline bool extract_geo_points(
     for (Py_ssize_t i = 0; i < n; ++i) {
         PyObject* item = items[i];
         double lat, lon;
-        if (__builtin_expect(PyTuple_CheckExact(item) && PyTuple_GET_SIZE(item) == 2, 1)) {
+        if (GEOKDTREE_LIKELY(PyTuple_CheckExact(item) && PyTuple_GET_SIZE(item) == 2)) {
             PyObject* p0 = PyTuple_GET_ITEM(item, 0);
             PyObject* p1 = PyTuple_GET_ITEM(item, 1);
-            if (__builtin_expect(extract_double(p0, lat) && extract_double(p1, lon), 1)) {
+            if (GEOKDTREE_LIKELY(extract_double(p0, lat) && extract_double(p1, lon))) {
                 double lat_rad = lat * DEG_TO_RAD, lon_rad = lon * DEG_TO_RAD;
                 double cos_lat = std::cos(lat_rad);
                 pts[i] = {cos_lat * std::cos(lon_rad), cos_lat * std::sin(lon_rad), std::sin(lat_rad), lat, lon, static_cast<int>(i)};
@@ -114,7 +122,7 @@ inline bool extract_geo_points(
         } else if (PyList_CheckExact(item) && PyList_GET_SIZE(item) == 2) {
             PyObject* p0 = PyList_GET_ITEM(item, 0);
             PyObject* p1 = PyList_GET_ITEM(item, 1);
-            if (__builtin_expect(extract_double(p0, lat) && extract_double(p1, lon), 1)) {
+            if (GEOKDTREE_LIKELY(extract_double(p0, lat) && extract_double(p1, lon))) {
                 double lat_rad = lat * DEG_TO_RAD, lon_rad = lon * DEG_TO_RAD;
                 double cos_lat = std::cos(lat_rad);
                 pts[i] = {cos_lat * std::cos(lon_rad), cos_lat * std::sin(lon_rad), std::sin(lat_rad), lat, lon, static_cast<int>(i)};
@@ -160,17 +168,17 @@ inline bool extract_kd_points_2d(
     for (Py_ssize_t i = 0; i < n; ++i) {
         PyObject* item = items[i];
         double x, y;
-        if (__builtin_expect(PyTuple_CheckExact(item) && PyTuple_GET_SIZE(item) == 2, 1)) {
+        if (GEOKDTREE_LIKELY(PyTuple_CheckExact(item) && PyTuple_GET_SIZE(item) == 2)) {
             PyObject* p0 = PyTuple_GET_ITEM(item, 0);
             PyObject* p1 = PyTuple_GET_ITEM(item, 1);
-            if (__builtin_expect(extract_double(p0, x) && extract_double(p1, y), 1)) {
+            if (GEOKDTREE_LIKELY(extract_double(p0, x) && extract_double(p1, y))) {
                 pts[i] = {x, y, static_cast<int>(i)};
                 continue;
             }
         } else if (PyList_CheckExact(item) && PyList_GET_SIZE(item) == 2) {
             PyObject* p0 = PyList_GET_ITEM(item, 0);
             PyObject* p1 = PyList_GET_ITEM(item, 1);
-            if (__builtin_expect(extract_double(p0, x) && extract_double(p1, y), 1)) {
+            if (GEOKDTREE_LIKELY(extract_double(p0, x) && extract_double(p1, y))) {
                 pts[i] = {x, y, static_cast<int>(i)};
                 continue;
             }

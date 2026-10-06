@@ -34,7 +34,7 @@ include = [
 [project]
 name = "geokdtree"
 version = "1.3.0b1"
-description = "Find a close point in log time."
+description = "Find closest points in log time."
 authors = [
     {name="Connor Makowski", email="conmak@mit.edu"}
 ]

@@ -2,8 +2,7 @@ r"""
 # GeoKDTree
 [![PyPI version](https://badge.fury.io/py/geokdtree.svg)](https://badge.fury.io/py/geokdtree)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![PyPI Downloads](https://pepy.tech/badge/geokdtree)](https://pypi.org/project/geokdtree/)
-<!-- [![PyPI Downloads](https://img.shields.io/pypi/dm/geokdtree.svg?label=PyPI%20downloads)](https://pypi.org/project/geokdtree/) -->
+[![PyPI Downloads](https://static.pepy.tech/personalized-badge/geokdtree?period=total&units=INTERNATIONAL_SYSTEM&left_color=GREY&right_color=ORANGE&left_text=Downloads)](https://pepy.tech/projects/geokdtree)
 
 ## Ultra-fast nearest-neighbor lookup for latitude/longitude data
 
@@ -75,18 +74,19 @@ closest_idx = geo_kd_tree.closest_idx(test_point)  # => 2
 # Find the closest point itself
 closest_point = geo_kd_tree.closest_point(test_point)  # => (37.7749, -122.4194)
 
-# Find closest points in each quadrant (ne, nw, se, sw)
-quadrants = geo_kd_tree.closest_point_per_quadrant(test_point)
+# Find the closest point in each quadrant (ne, nw, se, sw)
+closest_quadrants = geo_kd_tree.closest_point_per_quadrant(test_point)
 # => {'ne': (51.5074, -0.1278), 'nw': None, 'se': (40.7128, -74.006), 'sw': (37.7749, -122.4194)}
+# Find the index of the closest point in each quadrant (ne, nw, se, sw)
+closest_quad_indices = geo_kd_tree.closest_idx_per_quadrant(test_point)
+# => {'ne': 3, 'nw': None, 'se': 1, 'sw': 2}
 ```
 
 ## Why Use GeoKDTree?
 
 GeoKDTree is designed to solve one focused problem extremely well:
 
-**Fast nearest-neighbor lookup for latitude/longitude data at scale.**
-
-It is worth noting that the closest point found may not be the true closest point, but should be very close for most practical applications. See KD-Tree limitations for more details.
+**Fast nearest-neighbor and quadrant based lookups for latitude/longitude data at scale.**
 
 ### Extremely Fast Lookups
 
@@ -94,12 +94,12 @@ Once constructed, nearest-neighbor queries consistently complete in **hundreds o
 
 Typical benchmark results (see [benchmark.md](benchmark.md) for full benchmarks):
 
-| Number of Points ($N$) | C++ Build Time | Python Build Time | C++ Query Time | Python Query Time | Query Speedup |
-| ---------------------: | -------------: | ----------------: | -------------: | ----------------: | ------------: |
-|                  1,000 |        ~1.1 ms |           ~1.6 ms |       ~0.65 µs |          ~12.5 µs |          ~19x |
-|                 10,000 |         ~15 ms |            ~21 ms |       ~0.85 µs |          ~16.1 µs |          ~19x |
-|                100,000 |        ~225 ms |           ~350 ms |        ~1.8 µs |          ~24.0 µs |          ~13x |
-|              1,000,000 |         ~3.8 s |            ~6.3 s |        ~3.2 µs |          ~31.5 µs |          ~10x |
+| Number of Points ($N$) | C++ Build Time | Python Build Time | C++ Query Time | Python Query Time |
+| ---------------------: | -------------: | ----------------: | -------------: | ----------------: |
+|                  1,000 |       ~0.35 ms |           ~1.4 ms |       ~0.39 µs |           ~7.6 µs |
+|                 10,000 |        ~4.9 ms |            ~18 ms |       ~0.48 µs |          ~10.5 µs |
+|                100,000 |         ~57 ms |           ~275 ms |       ~0.90 µs |          ~15.8 µs |
+|              1,000,000 |        ~670 ms |            ~5.4 s |        ~1.9 µs |          ~23.4 µs |
 
 This makes GeoKDTree well-suited for:
 
@@ -129,7 +129,7 @@ GeoKDTree intentionally keeps the API small and focused.
 * Build once from a list of coordinates
 * Query nearest neighbors with a single method call
 * Retrieve indices or points directly from your original dataset
-* Zero external runtime dependencies, with optional C++ acceleration via `nanobind` and automatic pure Python fallback.
+* Zero external runtime dependencies, with C++ acceleration via `nanobind` and automatic pure Python fallback.
 
 ### Deterministic and Predictable Performance
 
@@ -180,14 +180,8 @@ Please open an issue to discuss changes or enhancements.
 
 """
 
-import os
-
-if os.environ.get("GEOKDTREE_REQUIRE_PYTHON") == "1":
+try:
+    from geokdtree.cpp import GeoKDTree, KDTree
+except ImportError:
     from geokdtree.geokdtree import GeoKDTree
     from geokdtree.kdtree import KDTree
-else:
-    try:
-        from geokdtree.cpp import GeoKDTree, KDTree
-    except ImportError:
-        from geokdtree.geokdtree import GeoKDTree
-        from geokdtree.kdtree import KDTree
