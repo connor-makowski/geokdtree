@@ -19,26 +19,39 @@ It wraps a highly optimized KD-Tree with a geographic interface, allowing you to
 
 ## Installation
 
+### Standard Installation (with C++ acceleration)
+
 ```bash
 pip install geokdtree
 ```
 
-If you are having trouble building the C++ extension during the pip installation process, you can install in pure Python mode:
+### Pure Python Installation (Skip Binary Builds)
 
-- On Mac / Linux / WSL2:
-    ```bash
-    export SKBUILD_CMAKE_ARGS="-DSKIP_CPP_BUILD=ON"
-    pip install geokdtree
-    ```
-- On Windows:
-    ```bash
-    # PowerShell:
-    $env:SKBUILD_CMAKE_ARGS="-DSKIP_CPP_BUILD=ON"
-    pip install geokdtree
-    # CMD:
-    set SKBUILD_CMAKE_ARGS=-DSKIP_CPP_BUILD=ON
-    pip install geokdtree
-    ```
+If you want to install `geokdtree` in pure Python mode without compiling or using binary extensions (or in environments without a C++ compiler):
+
+- **Linux / macOS / WSL2**:
+  ```bash
+  GEOKDTREE_NO_BUILD=1 pip install --no-binary geokdtree geokdtree
+  ```
+  Or with `uv`:
+  ```bash
+  GEOKDTREE_NO_BUILD=1 uv pip install --no-binary geokdtree geokdtree
+  ```
+
+- **Windows (PowerShell)**:
+  ```powershell
+  $env:GEOKDTREE_NO_BUILD="1"
+  pip install --no-binary geokdtree geokdtree
+  ```
+
+- **Windows (CMD)**:
+  ```cmd
+  set GEOKDTREE_NO_BUILD=1
+  pip install --no-binary geokdtree geokdtree
+  ```
+
+#### Automatic Fallback
+When building from source, if a C++ compiler is not available or compilation fails, `geokdtree` will automatically fall back to the pure Python implementation.
 
 ## Getting Started
 

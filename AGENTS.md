@@ -125,7 +125,6 @@ When modifying C++ code (`geokdtree/cpp/`) or building:
 | `GEOKDTREE_REQUIRE_CPP=1` | Test / runtime flag requiring the C++ extension to be loaded (asserts `geokdtree.cpp` is used). |
 | `GEOKDTREE_REQUIRE_PYTHON=1` | Test / runtime flag requiring the pure Python fallback to be loaded (asserts `geokdtree.geokdtree` is used). |
 | `GEOKDTREE_NO_BUILD=1` | Instructs `scikit-build-core` to skip CMake compilation, installing in pure Python mode. |
-| `SKBUILD_CMAKE_ARGS="-DSKIP_CPP_BUILD=ON"` | CMake argument to disable C++ compilation during `pip install`. |
 
 ---
 
