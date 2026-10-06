@@ -112,8 +112,8 @@ jobs:
         env:
           CIBW_ARCHS: ${{ matrix.cibw_archs }}
           CIBW_CACHE_PATH: ${{ runner.temp }}/cibw-cache
-          CIBW_ENVIRONMENT: TYPE_ENFORCED_REQUIRE_CPP="1"
-          CIBW_TEST_ENVIRONMENT: TYPE_ENFORCED_REQUIRE_CPP="1"
+          CIBW_ENVIRONMENT: GEOKDTREE_REQUIRE_CPP="1"
+          CIBW_TEST_ENVIRONMENT: GEOKDTREE_REQUIRE_CPP="1"
 
       - name: Upload wheels artifact
         uses: actions/upload-artifact@v4
@@ -195,6 +195,25 @@ jobs:
           done
           echo "Selected release assets for version $VERSION:"
           ls -la release_assets/
+
+      - name: Delete existing matching draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ needs.check_version.outputs.version }}"
+          RELEASE_JSON=$(gh release view "$VERSION" --json isDraft 2>/dev/null || echo "")
+
+          if [ -n "$RELEASE_JSON" ]; then
+            IS_DRAFT=$(echo "$RELEASE_JSON" | python3 -c 'import sys, json; print(json.load(sys.stdin).get("isDraft", False))')
+            if [ "$IS_DRAFT" = "True" ]; then
+              echo "Deleting existing draft release for $VERSION before recreating it."
+              gh release delete "$VERSION" --yes
+            else
+              echo "Release $VERSION is published; leaving it unchanged."
+            fi
+          else
+            echo "No existing release for $VERSION."
+          fi
 
       - name: Create or Update Draft Release
         uses: softprops/action-gh-release@v2

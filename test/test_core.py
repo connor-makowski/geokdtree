@@ -1,4 +1,9 @@
-from geokdtree.core import kdtree, squared_distance, closest_point
+from geokdtree.core import (
+    kdtree,
+    squared_distance,
+    closest_point,
+    closest_point_per_quadrant_2d,
+)
 
 
 def test_core_squared_distance():
@@ -34,3 +39,13 @@ def test_core_closest_point_empty():
     best_point, best_dist = closest_point(0, (1, 1))
     assert best_point is None
     assert best_dist == float("inf")
+
+
+def test_core_closest_point_per_quadrant_2d():
+    points = [(10, 10), (-10, 10), (10, -10), (-10, -10)]
+    tree = kdtree(points, depth=0, axis_count=2)
+    quads = closest_point_per_quadrant_2d(tree, (0, 0))
+    assert quads["ne"] == (10, 10)
+    assert quads["nw"] == (-10, 10)
+    assert quads["se"] == (10, -10)
+    assert quads["sw"] == (-10, -10)

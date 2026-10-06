@@ -45,6 +45,9 @@
                         <li>
                                 <a class="function" href="#KDTree.closest_point">closest_point</a>
                         </li>
+                        <li>
+                                <a class="function" href="#KDTree.closest_point_per_quadrant">closest_point_per_quadrant</a>
+                        </li>
                 </ul>
 
             </li>
@@ -128,7 +131,7 @@
 
                         <label class="view-source-button" for="mod-kdtree-view-source"><span>View Source</span></label>
 
-                        <div class="pdoc-code codehilite"><pre><span></span><span id="L-1"><a href="#L-1"><span class="linenos"> 1</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">.core</span><span class="w"> </span><span class="kn">import</span> <span class="n">kdtree</span><span class="p">,</span> <span class="n">closest_point</span>
+                        <div class="pdoc-code codehilite"><pre><span></span><span id="L-1"><a href="#L-1"><span class="linenos"> 1</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">.core</span><span class="w"> </span><span class="kn">import</span> <span class="n">kdtree</span><span class="p">,</span> <span class="n">closest_point</span><span class="p">,</span> <span class="n">closest_point_per_quadrant_2d</span>
 </span><span id="L-2"><a href="#L-2"><span class="linenos"> 2</span></a>
 </span><span id="L-3"><a href="#L-3"><span class="linenos"> 3</span></a>
 </span><span id="L-4"><a href="#L-4"><span class="linenos"> 4</span></a><span class="k">class</span><span class="w"> </span><span class="nc">KDTree</span><span class="p">:</span>
@@ -168,6 +171,28 @@
 </span><span id="L-38"><a href="#L-38"><span class="linenos">38</span></a><span class="sd">        - The closest point found in the KDTree to the given point.</span>
 </span><span id="L-39"><a href="#L-39"><span class="linenos">39</span></a><span class="sd">        """</span>
 </span><span id="L-40"><a href="#L-40"><span class="linenos">40</span></a>        <span class="k">return</span> <span class="n">closest_point</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tree</span><span class="p">,</span> <span class="n">point</span><span class="p">,</span> <span class="n">axis_count</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">axis_count</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+</span><span id="L-41"><a href="#L-41"><span class="linenos">41</span></a>
+</span><span id="L-42"><a href="#L-42"><span class="linenos">42</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">closest_point_per_quadrant</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">point</span><span class="p">):</span>
+</span><span id="L-43"><a href="#L-43"><span class="linenos">43</span></a><span class="w">        </span><span class="sd">"""</span>
+</span><span id="L-44"><a href="#L-44"><span class="linenos">44</span></a><span class="sd">        Function:</span>
+</span><span id="L-45"><a href="#L-45"><span class="linenos">45</span></a>
+</span><span id="L-46"><a href="#L-46"><span class="linenos">46</span></a><span class="sd">        - Find the closest point in each quadrant ('ne', 'nw', 'se', 'sw') for 2D Cartesian points.</span>
+</span><span id="L-47"><a href="#L-47"><span class="linenos">47</span></a>
+</span><span id="L-48"><a href="#L-48"><span class="linenos">48</span></a><span class="sd">        Required Arguments:</span>
+</span><span id="L-49"><a href="#L-49"><span class="linenos">49</span></a>
+</span><span id="L-50"><a href="#L-50"><span class="linenos">50</span></a><span class="sd">        - `point`</span>
+</span><span id="L-51"><a href="#L-51"><span class="linenos">51</span></a><span class="sd">            - Type: tuple</span>
+</span><span id="L-52"><a href="#L-52"><span class="linenos">52</span></a><span class="sd">            - What: The 2D query point (x, y)</span>
+</span><span id="L-53"><a href="#L-53"><span class="linenos">53</span></a>
+</span><span id="L-54"><a href="#L-54"><span class="linenos">54</span></a><span class="sd">        Returns:</span>
+</span><span id="L-55"><a href="#L-55"><span class="linenos">55</span></a>
+</span><span id="L-56"><a href="#L-56"><span class="linenos">56</span></a><span class="sd">        - A dictionary with keys 'ne', 'nw', 'se', 'sw' mapped to the closest point tuple or None.</span>
+</span><span id="L-57"><a href="#L-57"><span class="linenos">57</span></a><span class="sd">        """</span>
+</span><span id="L-58"><a href="#L-58"><span class="linenos">58</span></a>        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">axis_count</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
+</span><span id="L-59"><a href="#L-59"><span class="linenos">59</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="L-60"><a href="#L-60"><span class="linenos">60</span></a>                <span class="s2">"closest_point_per_quadrant is only supported for 2D Cartesian points."</span>
+</span><span id="L-61"><a href="#L-61"><span class="linenos">61</span></a>            <span class="p">)</span>
+</span><span id="L-62"><a href="#L-62"><span class="linenos">62</span></a>        <span class="k">return</span> <span class="n">closest_point_per_quadrant_2d</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tree</span><span class="p">,</span> <span class="n">point</span><span class="p">)</span>
 </span></pre></div>
 
 
@@ -220,6 +245,28 @@
 </span><span id="KDTree-39"><a href="#KDTree-39"><span class="linenos">39</span></a><span class="sd">        - The closest point found in the KDTree to the given point.</span>
 </span><span id="KDTree-40"><a href="#KDTree-40"><span class="linenos">40</span></a><span class="sd">        """</span>
 </span><span id="KDTree-41"><a href="#KDTree-41"><span class="linenos">41</span></a>        <span class="k">return</span> <span class="n">closest_point</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tree</span><span class="p">,</span> <span class="n">point</span><span class="p">,</span> <span class="n">axis_count</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">axis_count</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+</span><span id="KDTree-42"><a href="#KDTree-42"><span class="linenos">42</span></a>
+</span><span id="KDTree-43"><a href="#KDTree-43"><span class="linenos">43</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">closest_point_per_quadrant</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">point</span><span class="p">):</span>
+</span><span id="KDTree-44"><a href="#KDTree-44"><span class="linenos">44</span></a><span class="w">        </span><span class="sd">"""</span>
+</span><span id="KDTree-45"><a href="#KDTree-45"><span class="linenos">45</span></a><span class="sd">        Function:</span>
+</span><span id="KDTree-46"><a href="#KDTree-46"><span class="linenos">46</span></a>
+</span><span id="KDTree-47"><a href="#KDTree-47"><span class="linenos">47</span></a><span class="sd">        - Find the closest point in each quadrant ('ne', 'nw', 'se', 'sw') for 2D Cartesian points.</span>
+</span><span id="KDTree-48"><a href="#KDTree-48"><span class="linenos">48</span></a>
+</span><span id="KDTree-49"><a href="#KDTree-49"><span class="linenos">49</span></a><span class="sd">        Required Arguments:</span>
+</span><span id="KDTree-50"><a href="#KDTree-50"><span class="linenos">50</span></a>
+</span><span id="KDTree-51"><a href="#KDTree-51"><span class="linenos">51</span></a><span class="sd">        - `point`</span>
+</span><span id="KDTree-52"><a href="#KDTree-52"><span class="linenos">52</span></a><span class="sd">            - Type: tuple</span>
+</span><span id="KDTree-53"><a href="#KDTree-53"><span class="linenos">53</span></a><span class="sd">            - What: The 2D query point (x, y)</span>
+</span><span id="KDTree-54"><a href="#KDTree-54"><span class="linenos">54</span></a>
+</span><span id="KDTree-55"><a href="#KDTree-55"><span class="linenos">55</span></a><span class="sd">        Returns:</span>
+</span><span id="KDTree-56"><a href="#KDTree-56"><span class="linenos">56</span></a>
+</span><span id="KDTree-57"><a href="#KDTree-57"><span class="linenos">57</span></a><span class="sd">        - A dictionary with keys 'ne', 'nw', 'se', 'sw' mapped to the closest point tuple or None.</span>
+</span><span id="KDTree-58"><a href="#KDTree-58"><span class="linenos">58</span></a><span class="sd">        """</span>
+</span><span id="KDTree-59"><a href="#KDTree-59"><span class="linenos">59</span></a>        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">axis_count</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
+</span><span id="KDTree-60"><a href="#KDTree-60"><span class="linenos">60</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="KDTree-61"><a href="#KDTree-61"><span class="linenos">61</span></a>                <span class="s2">"closest_point_per_quadrant is only supported for 2D Cartesian points."</span>
+</span><span id="KDTree-62"><a href="#KDTree-62"><span class="linenos">62</span></a>            <span class="p">)</span>
+</span><span id="KDTree-63"><a href="#KDTree-63"><span class="linenos">63</span></a>        <span class="k">return</span> <span class="n">closest_point_per_quadrant_2d</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tree</span><span class="p">,</span> <span class="n">point</span><span class="p">)</span>
 </span></pre></div>
 
 
@@ -354,6 +401,66 @@
 
 <ul>
 <li>The closest point found in the KDTree to the given point.</li>
+</ul>
+</div>
+
+
+                            </div>
+                            <div id="KDTree.closest_point_per_quadrant" class="classattr">
+                                        <input id="KDTree.closest_point_per_quadrant-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+            
+        <span class="def">def</span>
+        <span class="name">closest_point_per_quadrant</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span>, </span><span class="param"><span class="n">point</span></span><span class="return-annotation">):</span></span>
+
+                <label class="view-source-button" for="KDTree.closest_point_per_quadrant-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#KDTree.closest_point_per_quadrant"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="KDTree.closest_point_per_quadrant-43"><a href="#KDTree.closest_point_per_quadrant-43"><span class="linenos">43</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">closest_point_per_quadrant</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">point</span><span class="p">):</span>
+</span><span id="KDTree.closest_point_per_quadrant-44"><a href="#KDTree.closest_point_per_quadrant-44"><span class="linenos">44</span></a><span class="w">        </span><span class="sd">"""</span>
+</span><span id="KDTree.closest_point_per_quadrant-45"><a href="#KDTree.closest_point_per_quadrant-45"><span class="linenos">45</span></a><span class="sd">        Function:</span>
+</span><span id="KDTree.closest_point_per_quadrant-46"><a href="#KDTree.closest_point_per_quadrant-46"><span class="linenos">46</span></a>
+</span><span id="KDTree.closest_point_per_quadrant-47"><a href="#KDTree.closest_point_per_quadrant-47"><span class="linenos">47</span></a><span class="sd">        - Find the closest point in each quadrant ('ne', 'nw', 'se', 'sw') for 2D Cartesian points.</span>
+</span><span id="KDTree.closest_point_per_quadrant-48"><a href="#KDTree.closest_point_per_quadrant-48"><span class="linenos">48</span></a>
+</span><span id="KDTree.closest_point_per_quadrant-49"><a href="#KDTree.closest_point_per_quadrant-49"><span class="linenos">49</span></a><span class="sd">        Required Arguments:</span>
+</span><span id="KDTree.closest_point_per_quadrant-50"><a href="#KDTree.closest_point_per_quadrant-50"><span class="linenos">50</span></a>
+</span><span id="KDTree.closest_point_per_quadrant-51"><a href="#KDTree.closest_point_per_quadrant-51"><span class="linenos">51</span></a><span class="sd">        - `point`</span>
+</span><span id="KDTree.closest_point_per_quadrant-52"><a href="#KDTree.closest_point_per_quadrant-52"><span class="linenos">52</span></a><span class="sd">            - Type: tuple</span>
+</span><span id="KDTree.closest_point_per_quadrant-53"><a href="#KDTree.closest_point_per_quadrant-53"><span class="linenos">53</span></a><span class="sd">            - What: The 2D query point (x, y)</span>
+</span><span id="KDTree.closest_point_per_quadrant-54"><a href="#KDTree.closest_point_per_quadrant-54"><span class="linenos">54</span></a>
+</span><span id="KDTree.closest_point_per_quadrant-55"><a href="#KDTree.closest_point_per_quadrant-55"><span class="linenos">55</span></a><span class="sd">        Returns:</span>
+</span><span id="KDTree.closest_point_per_quadrant-56"><a href="#KDTree.closest_point_per_quadrant-56"><span class="linenos">56</span></a>
+</span><span id="KDTree.closest_point_per_quadrant-57"><a href="#KDTree.closest_point_per_quadrant-57"><span class="linenos">57</span></a><span class="sd">        - A dictionary with keys 'ne', 'nw', 'se', 'sw' mapped to the closest point tuple or None.</span>
+</span><span id="KDTree.closest_point_per_quadrant-58"><a href="#KDTree.closest_point_per_quadrant-58"><span class="linenos">58</span></a><span class="sd">        """</span>
+</span><span id="KDTree.closest_point_per_quadrant-59"><a href="#KDTree.closest_point_per_quadrant-59"><span class="linenos">59</span></a>        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">axis_count</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
+</span><span id="KDTree.closest_point_per_quadrant-60"><a href="#KDTree.closest_point_per_quadrant-60"><span class="linenos">60</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="KDTree.closest_point_per_quadrant-61"><a href="#KDTree.closest_point_per_quadrant-61"><span class="linenos">61</span></a>                <span class="s2">"closest_point_per_quadrant is only supported for 2D Cartesian points."</span>
+</span><span id="KDTree.closest_point_per_quadrant-62"><a href="#KDTree.closest_point_per_quadrant-62"><span class="linenos">62</span></a>            <span class="p">)</span>
+</span><span id="KDTree.closest_point_per_quadrant-63"><a href="#KDTree.closest_point_per_quadrant-63"><span class="linenos">63</span></a>        <span class="k">return</span> <span class="n">closest_point_per_quadrant_2d</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tree</span><span class="p">,</span> <span class="n">point</span><span class="p">)</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>Function:</p>
+
+<ul>
+<li>Find the closest point in each quadrant ('ne', 'nw', 'se', 'sw') for 2D Cartesian points.</li>
+</ul>
+
+<p>Required Arguments:</p>
+
+<ul>
+<li><code>point</code>
+<ul>
+<li>Type: tuple</li>
+<li>What: The 2D query point (x, y)</li>
+</ul></li>
+</ul>
+
+<p>Returns:</p>
+
+<ul>
+<li>A dictionary with keys 'ne', 'nw', 'se', 'sw' mapped to the closest point tuple or None.</li>
 </ul>
 </div>
 

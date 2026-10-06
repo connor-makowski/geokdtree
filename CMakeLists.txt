@@ -24,7 +24,7 @@ set(CMAKE_BUILD_TYPE Release)
 if(MSVC)
     set(CMAKE_CXX_FLAGS_RELEASE "/O2 /DNDEBUG")
 else()
-    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
+    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -ffast-math -fomit-frame-pointer")
 endif()
 
 # -----------------------------

@@ -69,6 +69,9 @@
                         <li>
                                 <a class="function" href="#KDTree.closest_point">closest_point</a>
                         </li>
+                        <li>
+                                <a class="function" href="#KDTree.closest_point_per_quadrant">closest_point_per_quadrant</a>
+                        </li>
                 </ul>
 
             </li>
@@ -83,6 +86,12 @@
                         </li>
                         <li>
                                 <a class="function" href="#GeoKDTree.closest_point">closest_point</a>
+                        </li>
+                        <li>
+                                <a class="function" href="#GeoKDTree.closest_idx_per_quadrant">closest_idx_per_quadrant</a>
+                        </li>
+                        <li>
+                                <a class="function" href="#GeoKDTree.closest_point_per_quadrant">closest_point_per_quadrant</a>
                         </li>
                         <li>
                                 <a class="variable" href="#GeoKDTree.lat_lon_idx_to_xyz_idx">lat_lon_idx_to_xyz_idx</a>
@@ -336,6 +345,23 @@
 
 
                             </div>
+                            <div id="KDTree.closest_point_per_quadrant" class="classattr">
+                                <div class="attr function">
+            
+        <span class="def">def</span>
+        <span class="name">closest_point_per_quadrant</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">unknown</span></span><span class="return-annotation">):</span></span>
+
+        
+    </div>
+    <a class="headerlink" href="#KDTree.closest_point_per_quadrant"></a>
+    
+            <div class="docstring"><p>closest_point_per_quadrant(self, point: collections.abc.Sequence[float]) -> dict</p>
+
+<p>Find the closest point in each quadrant ('ne', 'nw', 'se', 'sw')</p>
+</div>
+
+
+                            </div>
                 </section>
                 <section id="GeoKDTree">
                     <div class="attr class">
@@ -395,6 +421,40 @@
             <div class="docstring"><p>closest_point(self, point: tuple[float, float]) -> tuple[float, float]</p>
 
 <p>Find the closest point (lat, lon) to the given (lat, lon) pair</p>
+</div>
+
+
+                            </div>
+                            <div id="GeoKDTree.closest_idx_per_quadrant" class="classattr">
+                                <div class="attr function">
+            
+        <span class="def">def</span>
+        <span class="name">closest_idx_per_quadrant</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">unknown</span></span><span class="return-annotation">):</span></span>
+
+        
+    </div>
+    <a class="headerlink" href="#GeoKDTree.closest_idx_per_quadrant"></a>
+    
+            <div class="docstring"><p>closest_idx_per_quadrant(self, point: tuple[float, float]) -> dict</p>
+
+<p>Find the index of the closest point in each quadrant ('ne', 'nw', 'se', 'sw')</p>
+</div>
+
+
+                            </div>
+                            <div id="GeoKDTree.closest_point_per_quadrant" class="classattr">
+                                <div class="attr function">
+            
+        <span class="def">def</span>
+        <span class="name">closest_point_per_quadrant</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">unknown</span></span><span class="return-annotation">):</span></span>
+
+        
+    </div>
+    <a class="headerlink" href="#GeoKDTree.closest_point_per_quadrant"></a>
+    
+            <div class="docstring"><p>closest_point_per_quadrant(self, point: tuple[float, float]) -> dict</p>
+
+<p>Find the closest point (lat, lon) in each quadrant ('ne', 'nw', 'se', 'sw')</p>
 </div>
 
 

@@ -69,3 +69,42 @@ def test_kdtree_scale_correctness(TreeClass):
     assert tree.closest_point((5, 5.5)) == (5, 6)
     assert tree.closest_point((50, 51)) == (50, 51)
     assert tree.closest_point((99, 100)) == (99, 100)
+
+
+@pytest.mark.parametrize("TreeClass", IMPLEMENTATIONS)
+def test_kdtree_closest_point_per_quadrant(TreeClass):
+    points = [
+        (2.0, 2.0),
+        (-2.0, 2.0),
+        (2.0, -2.0),
+        (-2.0, -2.0),
+        (5.0, 5.0),
+    ]
+    tree = TreeClass(points)
+    quads = tree.closest_point_per_quadrant((0.0, 0.0))
+
+    assert quads["ne"] == (2.0, 2.0)
+    assert quads["nw"] == (-2.0, 2.0)
+    assert quads["se"] == (2.0, -2.0)
+    assert quads["sw"] == (-2.0, -2.0)
+
+
+@pytest.mark.parametrize("TreeClass", IMPLEMENTATIONS)
+def test_kdtree_closest_point_per_quadrant_partial(TreeClass):
+    # Only points in NE and SE
+    points = [(3.0, 4.0), (3.0, -4.0)]
+    tree = TreeClass(points)
+    quads = tree.closest_point_per_quadrant((0.0, 0.0))
+
+    assert quads["ne"] == (3.0, 4.0)
+    assert quads["se"] == (3.0, -4.0)
+    assert quads["nw"] is None
+    assert quads["sw"] is None
+
+
+@pytest.mark.parametrize("TreeClass", IMPLEMENTATIONS)
+def test_kdtree_closest_point_per_quadrant_error_on_3d(TreeClass):
+    points = [(1, 2, 3), (4, 5, 6)]
+    tree = TreeClass(points)
+    with pytest.raises((ValueError, Exception)):
+        tree.closest_point_per_quadrant((0, 0, 0))

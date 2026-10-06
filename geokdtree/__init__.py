@@ -74,6 +74,10 @@ test_point = (47.6062, -122.3321)  # Seattle
 closest_idx = geo_kd_tree.closest_idx(test_point)  # => 2
 # Find the closest point itself
 closest_point = geo_kd_tree.closest_point(test_point)  # => (37.7749, -122.4194)
+
+# Find closest points in each quadrant (ne, nw, se, sw)
+quadrants = geo_kd_tree.closest_point_per_quadrant(test_point)
+# => {'ne': (51.5074, -0.1278), 'nw': None, 'se': (40.7128, -74.006), 'sw': (37.7749, -122.4194)}
 ```
 
 ## Why Use GeoKDTree?
@@ -176,8 +180,14 @@ Please open an issue to discuss changes or enhancements.
 
 """
 
-try:
-    from geokdtree.cpp import GeoKDTree, KDTree
-except ImportError:
+import os
+
+if os.environ.get("GEOKDTREE_REQUIRE_PYTHON") == "1":
     from geokdtree.geokdtree import GeoKDTree
     from geokdtree.kdtree import KDTree
+else:
+    try:
+        from geokdtree.cpp import GeoKDTree, KDTree
+    except ImportError:
+        from geokdtree.geokdtree import GeoKDTree
+        from geokdtree.kdtree import KDTree

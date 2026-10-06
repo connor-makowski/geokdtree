@@ -100,15 +100,19 @@ When modifying C++ code (`geokdtree/cpp/`) or building:
 - `GeoKDTree` — converts `(latitude, longitude)` points into 3D Cartesian coordinates `(x, y, z)` on a unit sphere, building a 3D KD-Tree with original coordinate indices preserved.
 - `closest_idx(point)` — returns the index in the original points list of the nearest neighbor.
 - `closest_point(point)` — returns the `(lat, lon)` tuple of the nearest neighbor.
+- `closest_idx_per_quadrant(point)` — returns a dictionary of closest indices per quadrant (`ne`, `nw`, `se`, `sw`).
+- `closest_point_per_quadrant(point)` — returns a dictionary of closest points per quadrant (`ne`, `nw`, `se`, `sw`).
 - `__lat_lon_idx_to_xyz_idx__` — converts degrees `(lat, lon, idx)` to radians and unit sphere `(x, y, z, idx)`.
 
 **`geokdtree/kdtree.py`** — pure Python Cartesian index:
 - `KDTree` — N-dimensional Cartesian point indexer using `core.py`.
 - `closest_point(point)` — returns the closest Cartesian point in the tree.
+- `closest_point_per_quadrant(point)` — returns a dictionary of closest points per quadrant (`ne`, `nw`, `se`, `sw`) for 2D points.
 
 **`geokdtree/core.py`** — pure Python KD-Tree primitives:
 - `kdtree(points, depth, axis_count)` — recursively partitions points along cycling axes by finding the median ($O(N \log N)$ construction).
 - `closest_point(node, point, best, axis_count, best_dist)` — recursive branch and bound nearest neighbor search ($O(\log N)$ query).
+- `closest_point_per_quadrant_2d(node, point)` — recursive nearest neighbor search across all 4 quadrants for 2D points.
 - `squared_distance(p1, p2, axis_count)` — Euclidean squared distance across $N$ dimensions.
 
 **`geokdtree/cpp/`** — C++ acceleration (`nanobind`):

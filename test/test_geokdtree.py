@@ -106,6 +106,118 @@ def test_geokdtree_single_point(TreeClass):
     assert tree.closest_point((0, 0)) == point
 
 
+@pytest.mark.parametrize("TreeClass", IMPLEMENTATIONS)
+def test_geokdtree_quadrant_search(TreeClass):
+    cities = [
+        (34.0522, -118.2437),  # 0: Los Angeles (SW of KC)
+        (40.7128, -74.0060),  # 1: New York (NE of KC)
+        (37.7749, -122.4194),  # 2: San Francisco (SW of KC)
+        (47.6062, -122.3321),  # 3: Seattle (NW of KC)
+        (25.7617, -80.1918),  # 4: Miami (SE of KC)
+    ]
+    tree = TreeClass(cities)
+    kansas_city = (39.0997, -94.5786)
+
+    indices = tree.closest_idx_per_quadrant(kansas_city)
+    points = tree.closest_point_per_quadrant(kansas_city)
+
+    assert indices["ne"] == 1
+    assert points["ne"] == cities[1]
+
+    assert indices["nw"] == 3
+    assert points["nw"] == cities[3]
+
+    assert indices["se"] == 4
+    assert points["se"] == cities[4]
+
+    assert indices["sw"] == 0
+    assert points["sw"] == cities[0]
+
+
+@pytest.mark.parametrize("TreeClass", IMPLEMENTATIONS)
+def test_geokdtree_quadrant_search_missing_quadrants(TreeClass):
+    # Only North-East and North-West points
+    points = [(50.0, 10.0), (50.0, -10.0)]
+    tree = TreeClass(points)
+    origin = (0.0, 0.0)
+
+    indices = tree.closest_idx_per_quadrant(origin)
+    pts = tree.closest_point_per_quadrant(origin)
+
+    assert indices["ne"] == 0
+    assert pts["ne"] == (50.0, 10.0)
+
+    assert indices["nw"] == 1
+    assert pts["nw"] == (50.0, -10.0)
+
+    assert indices["se"] is None
+    assert pts["se"] is None
+
+    assert indices["sw"] is None
+    assert pts["sw"] is None
+
+
+@pytest.mark.parametrize("TreeClass", IMPLEMENTATIONS)
+def test_geokdtree_quadrant_search_antimeridian(TreeClass):
+    points = [
+        (10.0, -179.0),  # 0: 2 deg East of 179 lon across antimeridian, North
+        (10.0, 175.0),  # 1: 4 deg West of 179 lon, North
+        (-10.0, -179.0),  # 2: 2 deg East of 179 lon across antimeridian, South
+        (-10.0, 175.0),  # 3: 4 deg West of 179 lon, South
+    ]
+    tree = TreeClass(points)
+    query = (0.0, 179.0)
+
+    indices = tree.closest_idx_per_quadrant(query)
+    pts = tree.closest_point_per_quadrant(query)
+
+    assert indices["ne"] == 0
+    assert pts["ne"] == points[0]
+
+    assert indices["nw"] == 1
+    assert pts["nw"] == points[1]
+
+    assert indices["se"] == 2
+    assert pts["se"] == points[2]
+
+    assert indices["sw"] == 3
+    assert pts["sw"] == points[3]
+
+    # Query from Western hemisphere near antimeridian (-178.0 lon)
+    # Point 0 (-179 lon) is 1 deg West -> NW
+    # Point 1 (175 lon) is 7 deg West (across antimeridian) -> NW
+    # Point 2 (-179 lon) is 1 deg West -> SW
+    # Point 3 (175 lon) is 7 deg West -> SW
+    points_west_hemi = [
+        (10.0, -175.0),  # 0: 3 deg East of -178 lon, North -> NE
+        (
+            10.0,
+            179.0,
+        ),  # 1: 3 deg West of -178 lon across antimeridian, North -> NW
+        (-10.0, -175.0),  # 2: 3 deg East of -178 lon, South -> SE
+        (
+            -10.0,
+            179.0,
+        ),  # 3: 3 deg West of -178 lon across antimeridian, South -> SW
+    ]
+    tree_wh = TreeClass(points_west_hemi)
+    query_wh = (0.0, -178.0)
+    indices_wh = tree_wh.closest_idx_per_quadrant(query_wh)
+    pts_wh = tree_wh.closest_point_per_quadrant(query_wh)
+
+    assert indices_wh["ne"] == 0
+    assert pts_wh["ne"] == points_west_hemi[0]
+
+    assert indices_wh["nw"] == 1
+    assert pts_wh["nw"] == points_west_hemi[1]
+
+    assert indices_wh["se"] == 2
+    assert pts_wh["se"] == points_west_hemi[2]
+
+    assert indices_wh["sw"] == 3
+    assert pts_wh["sw"] == points_west_hemi[3]
+
+
 def test_lat_lon_to_xyz_conversion():
     x, y, z, idx = py_lat_lon_to_xyz(0, 0, 5)
     assert math.isclose(x, 1.0, abs_tol=1e-6)
