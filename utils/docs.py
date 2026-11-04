@@ -71,8 +71,14 @@ def generate_docs(version):
 
 # Build __init__.py from README
 readme = (root / "README.md").read_text()
+import_string = """try:
+    from geokdtree.cpp import GeoKDTree, KDTree, Hilbert, GeoHilbert
+except ImportError:
+    from geokdtree.geokdtree import GeoKDTree
+    from geokdtree.kdtree import KDTree
+    from geokdtree.hilbert import Hilbert, GeoHilbert"""
 geokdtree.write_text(
-    f'r"""\n{readme}\n"""\n\ntry:\n    from geokdtree.cpp import GeoKDTree, KDTree\nexcept ImportError:\n    from geokdtree.geokdtree import GeoKDTree\n    from geokdtree.kdtree import KDTree\n'
+    f'r"""\n{readme}\n"""\n\n{import_string}\n'
 )
 
 # Update the versions manifest loaded dynamically by client-side JS

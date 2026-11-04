@@ -176,3 +176,81 @@ Please open an issue to discuss changes or enhancements.
    ```bash
    uv run python utils/prettify.py
    ```
+
+## Hilbert
+
+`Hilbert` provides spatial indexing for N-dimensional Cartesian points using the Hilbert space-filling curve, allowing you to find the nearest point, retrieve its original dataset index, or obtain the Hilbert curve ordering:
+
+```python
+from geokdtree import Hilbert
+
+example_points = [
+    (0.0, 0.0),
+    (5.0, 5.0),
+    (10.0, 10.0),
+    (1.0, 2.0),
+]
+
+hilbert = Hilbert(points=example_points)
+
+test_point = (1.0, 1.0)
+# Find the index of the closest point in the original dataset
+closest_idx = hilbert.closest_idx(test_point)  # => 0
+# Find the closest point itself
+closest_point = hilbert.closest_point(test_point)  # => (0.0, 0.0)
+
+# Get the dataset permutation in Hilbert curve order
+order = hilbert.hilbert_order()  # => [0, 3, 1, 2]
+```
+
+## GeoHilbert
+
+`GeoHilbert` provides spatial indexing for `(latitude, longitude)` geographic coordinates using the 3D Hilbert space-filling curve on the unit sphere, allowing you to find the nearest point, retrieve its original dataset index, or obtain the Hilbert curve ordering:
+
+```python
+from geokdtree import GeoHilbert
+
+example_points = [
+    (34.0522, -118.2437),  # Los Angeles
+    (40.7128, -74.0060),  # New York
+    (37.7749, -122.4194),  # San Francisco
+    (51.5074, -0.1278),  # London
+    (48.8566, 2.3522),  # Paris
+]
+
+geo_hilbert = GeoHilbert(points=example_points)
+
+test_point = (37.7, -122.4)
+# Find the index of the closest point in the original dataset
+closest_idx = geo_hilbert.closest_idx(test_point)  # => 2
+# Find the closest point itself
+closest_point = geo_hilbert.closest_point(test_point)  # => (37.7749, -122.4194)
+
+# Get the dataset permutation in Hilbert curve order
+order = geo_hilbert.hilbert_order()
+```
+
+## Batch nearest-neighbor queries
+
+`KDTree`, `GeoKDTree`, `Hilbert`, and `GeoHilbert` provide `closest_points(points)`. `GeoKDTree`, `Hilbert`, and `GeoHilbert` additionally provide `closest_indices(points)` (or `closest_indicies(points)`), whose indices refer to the original dataset order. Results follow query order, including repeated queries, and use scalar searches under the hood. Native batches process all queries in one binding call.
+
+```python
+from geokdtree import KDTree, GeoKDTree
+
+tree = KDTree([(0.0, 0.0), (5.0, 5.0)])
+assert tree.closest_points([(4.0, 4.0), (0.1, 0.1)]) == [
+    (5.0, 5.0), (0.0, 0.0)
+]
+
+cities = [(34.0522, -118.2437), (40.7128, -74.0060)]
+geo = GeoKDTree(cities)
+query_points = [(47.6062, -122.3321), (41.0, -74.0)]
+indices = geo.closest_indices(query_points)
+assert geo.closest_points(query_points) == [cities[i] for i in indices]
+```
+
+Batch queries must have the tree's dimension and finite coordinates. Empty
+batches return `[]`. Pure Python permits constructing an empty tree and raises
+`ValueError` for a nonempty batch on it; native constructors retain their
+existing rejection of empty datasets. Tree constructors, scalar searches and
+quadrant methods retain their existing behavior.

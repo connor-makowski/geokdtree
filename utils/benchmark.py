@@ -9,15 +9,21 @@ from pathlib import Path
 
 from geokdtree.geokdtree import GeoKDTree as PyGeoKDTree
 from geokdtree.kdtree import KDTree as PyKDTree
+from geokdtree.hilbert import Hilbert as PyHilbert
+from geokdtree.hilbert import GeoHilbert as PyGeoHilbert
 
 try:
     from geokdtree.cpp import GeoKDTree as CppGeoKDTree
     from geokdtree.cpp import KDTree as CppKDTree
+    from geokdtree.cpp import Hilbert as CppHilbert
+    from geokdtree.cpp import GeoHilbert as CppGeoHilbert
 
     HAS_CPP = True
 except ImportError:
     CppGeoKDTree = None
     CppKDTree = None
+    CppHilbert = None
+    CppGeoHilbert = None
     HAS_CPP = False
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -209,7 +215,7 @@ def benchmark_kdtree():
 
         # 1. Pure Python
         t0 = time.perf_counter()
-        py_tree = PyKDTree(points)
+        py_tree = PyKDTree(points.copy())
         py_build_ms = (time.perf_counter() - t0) * 1000
 
         # Python closest_point
@@ -283,6 +289,238 @@ def benchmark_kdtree():
     return results
 
 
+def benchmark_geohilbert():
+    print("\n" + "=" * 60)
+    print(" Running GeoHilbert Benchmarks (Latitude/Longitude)")
+    print("=" * 60)
+
+    magnitudes = [3, 4, 5, 6]  # 1K, 10K, 100K, 1M
+    results = []
+
+    random.seed(42)
+
+    for mag in magnitudes:
+        num_points = 10**mag
+        query_count = (
+            5000
+            if num_points <= 10000
+            else (1000 if num_points <= 100000 else 200)
+        )
+
+        print(
+            f"\n--- Benchmark N = {num_points:,} points (queries: {query_count:,}) ---"
+        )
+
+        points = [
+            (random.uniform(-90.0, 90.0), random.uniform(-180.0, 180.0))
+            for _ in range(num_points)
+        ]
+        queries = [
+            (random.uniform(-90.0, 90.0), random.uniform(-180.0, 180.0))
+            for _ in range(query_count)
+        ]
+
+        row = {
+            "n": num_points,
+            "query_count": query_count,
+        }
+
+        # 1. Pure Python Benchmark
+        t0 = time.perf_counter()
+        py_tree = PyGeoHilbert(points)
+        py_build_ms = (time.perf_counter() - t0) * 1000
+
+        t0 = time.perf_counter()
+        for q in queries:
+            py_tree.closest_idx(q)
+        py_idx_us = ((time.perf_counter() - t0) / query_count) * 1_000_000
+
+        t0 = time.perf_counter()
+        for q in queries:
+            py_tree.closest_point(q)
+        py_pt_us = ((time.perf_counter() - t0) / query_count) * 1_000_000
+
+        t0 = time.perf_counter()
+        py_tree.hilbert_order()
+        py_order_ms = (time.perf_counter() - t0) * 1000
+
+        row["py_build_ms"] = py_build_ms
+        row["py_idx_us"] = py_idx_us
+        row["py_pt_us"] = py_pt_us
+        row["py_order_ms"] = py_order_ms
+        row["py_qps"] = int(1_000_000 / py_pt_us) if py_pt_us > 0 else 0
+
+        print(
+            f"  [Pure Python]  Build: {py_build_ms:8.2f} ms | "
+            f"Nearest: {py_pt_us:6.2f} µs | "
+            f"Index: {py_idx_us:6.2f} µs | "
+            f"Order: {py_order_ms:6.2f} ms | QPS: {row['py_qps']:,}"
+        )
+
+        # 2. C++ (if available)
+        if HAS_CPP:
+            t0 = time.perf_counter()
+            cpp_tree = CppGeoHilbert(points)
+            cpp_build_ms = (time.perf_counter() - t0) * 1000
+
+            t0 = time.perf_counter()
+            for q in queries:
+                cpp_tree.closest_idx(q)
+            cpp_idx_us = ((time.perf_counter() - t0) / query_count) * 1_000_000
+
+            t0 = time.perf_counter()
+            for q in queries:
+                cpp_tree.closest_point(q)
+            cpp_pt_us = ((time.perf_counter() - t0) / query_count) * 1_000_000
+
+            t0 = time.perf_counter()
+            cpp_tree.hilbert_order()
+            cpp_order_ms = (time.perf_counter() - t0) * 1000
+
+            row["cpp_build_ms"] = cpp_build_ms
+            row["cpp_idx_us"] = cpp_idx_us
+            row["cpp_pt_us"] = cpp_pt_us
+            row["cpp_order_ms"] = cpp_order_ms
+            row["cpp_qps"] = int(1_000_000 / cpp_pt_us) if cpp_pt_us > 0 else 0
+            row["build_speedup"] = (
+                py_build_ms / cpp_build_ms if cpp_build_ms > 0 else 1.0
+            )
+            row["query_speedup"] = (
+                py_pt_us / cpp_pt_us if cpp_pt_us > 0 else 1.0
+            )
+            row["order_speedup"] = (
+                py_order_ms / cpp_order_ms if cpp_order_ms > 0 else 1.0
+            )
+
+            print(
+                f"  [C++ Extension] Build: {cpp_build_ms:8.2f} ms | "
+                f"Nearest: {cpp_pt_us:6.2f} µs | "
+                f"Index: {cpp_idx_us:6.2f} µs | "
+                f"Order: {cpp_order_ms:6.2f} ms | "
+                f"Speedup: {row['query_speedup']:.1f}x (build: {row['build_speedup']:.1f}x)"
+            )
+
+        results.append(row)
+
+    return results
+
+
+def benchmark_hilbert():
+    print("\n" + "=" * 60)
+    print(" Running Hilbert Spatial Index Benchmarks (2D Cartesian)")
+    print("=" * 60)
+
+    magnitudes = [3, 4, 5, 6]  # 1K, 10K, 100K, 1M
+    results = []
+
+    random.seed(42)
+
+    for mag in magnitudes:
+        num_points = 10**mag
+        query_count = (
+            5000
+            if num_points <= 10000
+            else (1000 if num_points <= 100000 else 200)
+        )
+
+        print(
+            f"\n--- Benchmark N = {num_points:,} points (queries: {query_count:,}) ---"
+        )
+
+        points = [
+            (random.uniform(0.0, 1000.0), random.uniform(0.0, 1000.0))
+            for _ in range(num_points)
+        ]
+        queries = [
+            (random.uniform(0.0, 1000.0), random.uniform(0.0, 1000.0))
+            for _ in range(query_count)
+        ]
+
+        row = {
+            "n": num_points,
+            "query_count": query_count,
+        }
+
+        # 1. Pure Python Benchmark
+        t0 = time.perf_counter()
+        py_tree = PyHilbert(points)
+        py_build_ms = (time.perf_counter() - t0) * 1000
+
+        t0 = time.perf_counter()
+        for q in queries:
+            py_tree.closest_idx(q)
+        py_idx_us = ((time.perf_counter() - t0) / query_count) * 1_000_000
+
+        t0 = time.perf_counter()
+        for q in queries:
+            py_tree.closest_point(q)
+        py_pt_us = ((time.perf_counter() - t0) / query_count) * 1_000_000
+
+        t0 = time.perf_counter()
+        py_tree.hilbert_order()
+        py_order_ms = (time.perf_counter() - t0) * 1000
+
+        row["py_build_ms"] = py_build_ms
+        row["py_idx_us"] = py_idx_us
+        row["py_pt_us"] = py_pt_us
+        row["py_order_ms"] = py_order_ms
+        row["py_qps"] = int(1_000_000 / py_pt_us) if py_pt_us > 0 else 0
+
+        print(
+            f"  [Pure Python]  Build: {py_build_ms:8.2f} ms | "
+            f"Nearest: {py_pt_us:6.2f} µs | "
+            f"Index: {py_idx_us:6.2f} µs | "
+            f"Order: {py_order_ms:6.2f} ms | QPS: {row['py_qps']:,}"
+        )
+
+        # 2. C++ (if available)
+        if HAS_CPP:
+            t0 = time.perf_counter()
+            cpp_tree = CppHilbert(points)
+            cpp_build_ms = (time.perf_counter() - t0) * 1000
+
+            t0 = time.perf_counter()
+            for q in queries:
+                cpp_tree.closest_idx(q)
+            cpp_idx_us = ((time.perf_counter() - t0) / query_count) * 1_000_000
+
+            t0 = time.perf_counter()
+            for q in queries:
+                cpp_tree.closest_point(q)
+            cpp_pt_us = ((time.perf_counter() - t0) / query_count) * 1_000_000
+
+            t0 = time.perf_counter()
+            cpp_tree.hilbert_order()
+            cpp_order_ms = (time.perf_counter() - t0) * 1000
+
+            row["cpp_build_ms"] = cpp_build_ms
+            row["cpp_idx_us"] = cpp_idx_us
+            row["cpp_pt_us"] = cpp_pt_us
+            row["cpp_order_ms"] = cpp_order_ms
+            row["cpp_qps"] = int(1_000_000 / cpp_pt_us) if cpp_pt_us > 0 else 0
+            row["build_speedup"] = (
+                py_build_ms / cpp_build_ms if cpp_build_ms > 0 else 1.0
+            )
+            row["query_speedup"] = (
+                py_pt_us / cpp_pt_us if cpp_pt_us > 0 else 1.0
+            )
+            row["order_speedup"] = (
+                py_order_ms / cpp_order_ms if cpp_order_ms > 0 else 1.0
+            )
+
+            print(
+                f"  [C++ Extension] Build: {cpp_build_ms:8.2f} ms | "
+                f"Nearest: {cpp_pt_us:6.2f} µs | "
+                f"Index: {cpp_idx_us:6.2f} µs | "
+                f"Order: {cpp_order_ms:6.2f} ms | "
+                f"Speedup: {row['query_speedup']:.1f}x (build: {row['build_speedup']:.1f}x)"
+            )
+
+        results.append(row)
+
+    return results
+
+
 def format_ms(val):
     if val < 1.0:
         return f"{val:.3f} ms"
@@ -301,7 +539,9 @@ def format_us(val):
         return f"{val / 1000:.2f} ms"
 
 
-def generate_markdown(sys_info, geo_results, kd_results):
+def generate_markdown(
+    sys_info, geo_results, kd_results, geohilbert_results, hilbert_results
+):
     md = []
     md.append("# GeoKDTree Performance Benchmarks\n")
     md.append(
@@ -433,9 +673,105 @@ def generate_markdown(sys_info, geo_results, kd_results):
         )
     md.append("\n")
 
+    # GeoHilbert Table
+    md.append("## GeoHilbert Benchmarks (Latitude/Longitude)\n")
+    if sys_info["has_cpp"]:
+        md.append("### C++ vs Pure Python Comparison\n")
+        md.append(
+            "| Dataset Size ($N$) | C++ Build | Python Build | Build Speedup | C++ Nearest | Python Nearest | Nearest Speedup | C++ Order | Python Order | Order Speedup |"
+        )
+        md.append("|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|")
+        for r in geohilbert_results:
+            n_str = f"{r['n']:,}"
+            cpp_build = format_ms(r["cpp_build_ms"])
+            py_build = format_ms(r["py_build_ms"])
+            b_speedup = f"**{r['build_speedup']:.2f}x**"
+            cpp_q = format_us(r["cpp_pt_us"])
+            py_q = format_us(r["py_pt_us"])
+            q_speedup = f"**{r['query_speedup']:.1f}x**"
+            cpp_order = format_ms(r["cpp_order_ms"])
+            py_order = format_ms(r["py_order_ms"])
+            order_speedup = f"**{r['order_speedup']:.1f}x**"
+            md.append(
+                f"| {n_str} | {cpp_build} | {py_build} | {b_speedup} | {cpp_q} | {py_q} | {q_speedup} | {cpp_order} | {py_order} | {order_speedup} |"
+            )
+        md.append("")
+
+        md.append("### Detailed C++ GeoHilbert Results\n")
+        md.append(
+            "| Points ($N$) | Build Time | `closest_point` | `closest_idx` | `hilbert_order` | Nearest QPS |"
+        )
+        md.append("|---:|---:|---:|---:|---:|---:|")
+        for r in geohilbert_results:
+            md.append(
+                f"| {r['n']:,} | {format_ms(r['cpp_build_ms'])} | {format_us(r['cpp_pt_us'])} | "
+                f"{format_us(r['cpp_idx_us'])} | {format_ms(r['cpp_order_ms'])} | {r['cpp_qps']:,} qps |"
+            )
+        md.append("")
+
+    md.append("### Detailed Pure Python GeoHilbert Results\n")
+    md.append(
+        "| Points ($N$) | Build Time | `closest_point` | `closest_idx` | `hilbert_order` | Nearest QPS |"
+    )
+    md.append("|---:|---:|---:|---:|---:|---:|")
+    for r in geohilbert_results:
+        md.append(
+            f"| {r['n']:,} | {format_ms(r['py_build_ms'])} | {format_us(r['py_pt_us'])} | "
+            f"{format_us(r['py_idx_us'])} | {format_ms(r['py_order_ms'])} | {r['py_qps']:,} qps |"
+        )
+    md.append("\n")
+
+    # Hilbert Table
+    md.append("## Hilbert Benchmarks (Cartesian 2D)\n")
+    if sys_info["has_cpp"]:
+        md.append("### C++ vs Pure Python Comparison\n")
+        md.append(
+            "| Dataset Size ($N$) | C++ Build | Python Build | Build Speedup | C++ Nearest | Python Nearest | Nearest Speedup | C++ Order | Python Order | Order Speedup |"
+        )
+        md.append("|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|")
+        for r in hilbert_results:
+            n_str = f"{r['n']:,}"
+            cpp_build = format_ms(r["cpp_build_ms"])
+            py_build = format_ms(r["py_build_ms"])
+            b_speedup = f"**{r['build_speedup']:.2f}x**"
+            cpp_q = format_us(r["cpp_pt_us"])
+            py_q = format_us(r["py_pt_us"])
+            q_speedup = f"**{r['query_speedup']:.1f}x**"
+            cpp_order = format_ms(r["cpp_order_ms"])
+            py_order = format_ms(r["py_order_ms"])
+            order_speedup = f"**{r['order_speedup']:.1f}x**"
+            md.append(
+                f"| {n_str} | {cpp_build} | {py_build} | {b_speedup} | {cpp_q} | {py_q} | {q_speedup} | {cpp_order} | {py_order} | {order_speedup} |"
+            )
+        md.append("")
+
+        md.append("### Detailed C++ Hilbert Results\n")
+        md.append(
+            "| Points ($N$) | Build Time | `closest_point` | `closest_idx` | `hilbert_order` | Nearest QPS |"
+        )
+        md.append("|---:|---:|---:|---:|---:|---:|")
+        for r in hilbert_results:
+            md.append(
+                f"| {r['n']:,} | {format_ms(r['cpp_build_ms'])} | {format_us(r['cpp_pt_us'])} | "
+                f"{format_us(r['cpp_idx_us'])} | {format_ms(r['cpp_order_ms'])} | {r['cpp_qps']:,} qps |"
+            )
+        md.append("")
+
+    md.append("### Detailed Pure Python Hilbert Results\n")
+    md.append(
+        "| Points ($N$) | Build Time | `closest_point` | `closest_idx` | `hilbert_order` | Nearest QPS |"
+    )
+    md.append("|---:|---:|---:|---:|---:|---:|")
+    for r in hilbert_results:
+        md.append(
+            f"| {r['n']:,} | {format_ms(r['py_build_ms'])} | {format_us(r['py_pt_us'])} | "
+            f"{format_us(r['py_idx_us'])} | {format_ms(r['py_order_ms'])} | {r['py_qps']:,} qps |"
+        )
+    md.append("\n")
+
     md.append("## Methodology\n")
     md.append(
-        "1. **Data**: Coordinates randomly and uniformly distributed over valid ranges ($[-90, 90]$ latitude, $[-180, 180]$ longitude for GeoKDTree; $[0, 1000] \\times [0, 1000]$ for 2D KDTree)."
+        "1. **Data**: Coordinates randomly and uniformly distributed over valid ranges ($[-90, 90]$ latitude, $[-180, 180]$ longitude for GeoKDTree and GeoHilbert; $[0, 1000] \\times [0, 1000]$ for 2D KDTree and Hilbert)."
     )
     md.append(
         "2. **Timing**: Measured with `time.perf_counter()` over thousands of repeated lookups to compute stable averages."
@@ -456,8 +792,12 @@ def main():
 
     geo_results = benchmark_geokdtree()
     kd_results = benchmark_kdtree()
+    geohilbert_results = benchmark_geohilbert()
+    hilbert_results = benchmark_hilbert()
 
-    markdown_content = generate_markdown(sys_info, geo_results, kd_results)
+    markdown_content = generate_markdown(
+        sys_info, geo_results, kd_results, geohilbert_results, hilbert_results
+    )
 
     output_path = ROOT / "benchmark.md"
     output_path.write_text(markdown_content)
