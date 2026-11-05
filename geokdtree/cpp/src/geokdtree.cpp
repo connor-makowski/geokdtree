@@ -396,7 +396,9 @@ GeoKDTree::GeoKDTree(
 ) : original_points(std::move(orig)) {
     if (pts.empty()) throw std::invalid_argument("Cannot build GeoKDTree from empty point list");
     nodes.clear();
-    nodes.reserve(pts.size());
+    nodes.reserve(2 * ((pts.size() + LEAF_SIZE - 1) / LEAF_SIZE));
+    leaf_points.clear();
+    leaf_points.reserve(pts.size());
     root = build_tree(pts, 0, pts.size(), 0);
 }
 
@@ -414,7 +416,9 @@ GeoKDTree::GeoKDTree(const std::vector<std::pair<double, double>>& points)
         pts[i] = {cos_lat * std::cos(lon_rad), cos_lat * std::sin(lon_rad), std::sin(lat_rad), lat, lon, static_cast<int>(i)};
     }
     nodes.clear();
-    nodes.reserve(points.size());
+    nodes.reserve(2 * ((points.size() + LEAF_SIZE - 1) / LEAF_SIZE));
+    leaf_points.clear();
+    leaf_points.reserve(points.size());
     root = build_tree(pts, 0, pts.size(), 0);
 }
 
@@ -432,7 +436,9 @@ GeoKDTree::GeoKDTree(std::vector<std::pair<double, double>>&& points)
         pts[i] = {cos_lat * std::cos(lon_rad), cos_lat * std::sin(lon_rad), std::sin(lat_rad), lat, lon, static_cast<int>(i)};
     }
     nodes.clear();
-    nodes.reserve(original_points.size());
+    nodes.reserve(2 * ((original_points.size() + LEAF_SIZE - 1) / LEAF_SIZE));
+    leaf_points.clear();
+    leaf_points.reserve(original_points.size());
     root = build_tree(pts, 0, pts.size(), 0);
 }
 
@@ -443,6 +449,29 @@ int GeoKDTree::build_tree(
     int depth
 ) {
     if (start >= end) return -1;
+
+    if (end - start <= LEAF_SIZE) {
+        int node_idx = static_cast<int>(nodes.size());
+        nodes.emplace_back();
+        auto& node = nodes[node_idx];
+        node.leaf_start = leaf_points.size();
+        node.leaf_count = end - start;
+        const auto& first = points[start];
+        node.min_x = node.max_x = first.x;
+        node.min_y = node.max_y = first.y;
+        node.min_z = node.max_z = first.z;
+        for (size_t i = start; i < end; ++i) {
+            const auto& pt = points[i];
+            leaf_points.push_back(pt);
+            node.min_x = std::min(node.min_x, pt.x);
+            node.max_x = std::max(node.max_x, pt.x);
+            node.min_y = std::min(node.min_y, pt.y);
+            node.max_y = std::max(node.max_y, pt.y);
+            node.min_z = std::min(node.min_z, pt.z);
+            node.max_z = std::max(node.max_z, pt.z);
+        }
+        return node_idx;
+    }
 
     int axis = depth % 3;
     size_t median = start + (end - start) / 2;
@@ -459,14 +488,13 @@ int GeoKDTree::build_tree(
     int node_idx = static_cast<int>(nodes.size());
     nodes.emplace_back();
 
-    auto& node = nodes[node_idx];
     const auto& pt = points[median];
-    node.x = pt.x; node.y = pt.y; node.z = pt.z;
-    node.lat = pt.lat; node.lon = pt.lon; node.idx = pt.idx;
-    node.axis = axis;
-    node.min_x = node.max_x = pt.x;
-    node.min_y = node.max_y = pt.y;
-    node.min_z = node.max_z = pt.z;
+    nodes[node_idx].x = pt.x; nodes[node_idx].y = pt.y; nodes[node_idx].z = pt.z;
+    nodes[node_idx].lat = pt.lat; nodes[node_idx].lon = pt.lon; nodes[node_idx].idx = pt.idx;
+    nodes[node_idx].axis = axis;
+    nodes[node_idx].min_x = nodes[node_idx].max_x = pt.x;
+    nodes[node_idx].min_y = nodes[node_idx].max_y = pt.y;
+    nodes[node_idx].min_z = nodes[node_idx].max_z = pt.z;
 
     int left = build_tree(points, start, median, depth + 1);
     int right = build_tree(points, median + 1, end, depth + 1);
@@ -475,20 +503,20 @@ int GeoKDTree::build_tree(
     nodes[node_idx].right = right;
 
     if (left >= 0) {
-        node.min_x = std::min(node.min_x, nodes[left].min_x);
-        node.max_x = std::max(node.max_x, nodes[left].max_x);
-        node.min_y = std::min(node.min_y, nodes[left].min_y);
-        node.max_y = std::max(node.max_y, nodes[left].max_y);
-        node.min_z = std::min(node.min_z, nodes[left].min_z);
-        node.max_z = std::max(node.max_z, nodes[left].max_z);
+        nodes[node_idx].min_x = std::min(nodes[node_idx].min_x, nodes[left].min_x);
+        nodes[node_idx].max_x = std::max(nodes[node_idx].max_x, nodes[left].max_x);
+        nodes[node_idx].min_y = std::min(nodes[node_idx].min_y, nodes[left].min_y);
+        nodes[node_idx].max_y = std::max(nodes[node_idx].max_y, nodes[left].max_y);
+        nodes[node_idx].min_z = std::min(nodes[node_idx].min_z, nodes[left].min_z);
+        nodes[node_idx].max_z = std::max(nodes[node_idx].max_z, nodes[left].max_z);
     }
     if (right >= 0) {
-        node.min_x = std::min(node.min_x, nodes[right].min_x);
-        node.max_x = std::max(node.max_x, nodes[right].max_x);
-        node.min_y = std::min(node.min_y, nodes[right].min_y);
-        node.max_y = std::max(node.max_y, nodes[right].max_y);
-        node.min_z = std::min(node.min_z, nodes[right].min_z);
-        node.max_z = std::max(node.max_z, nodes[right].max_z);
+        nodes[node_idx].min_x = std::min(nodes[node_idx].min_x, nodes[right].min_x);
+        nodes[node_idx].max_x = std::max(nodes[node_idx].max_x, nodes[right].max_x);
+        nodes[node_idx].min_y = std::min(nodes[node_idx].min_y, nodes[right].min_y);
+        nodes[node_idx].max_y = std::max(nodes[node_idx].max_y, nodes[right].max_y);
+        nodes[node_idx].min_z = std::min(nodes[node_idx].min_z, nodes[right].min_z);
+        nodes[node_idx].max_z = std::max(nodes[node_idx].max_z, nodes[right].max_z);
     }
 
     return node_idx;
@@ -506,6 +534,22 @@ void GeoKDTree::find_closest_3d(
 
     const auto& node = nodes[node_idx];
     if (kdtree_helpers::box_dist_sq_3d(qx, qy, qz, node.min_x, node.max_x, node.min_y, node.max_y, node.min_z, node.max_z) >= best_dist) {
+        return;
+    }
+
+    if (node.leaf_count != 0) {
+        const size_t end = node.leaf_start + node.leaf_count;
+        for (size_t i = node.leaf_start; i < end; ++i) {
+            const auto& pt = leaf_points[i];
+            double dx = qx - pt.x;
+            double dy = qy - pt.y;
+            double dz = qz - pt.z;
+            double dist = dx * dx + dy * dy + dz * dz;
+            if (dist < best_dist) {
+                best_idx = pt.idx;
+                best_dist = dist;
+            }
+        }
         return;
     }
 
@@ -613,6 +657,27 @@ void GeoKDTree::find_closest_point_per_quadrant_3d(
 
     double box_dist_sq = kdtree_helpers::box_dist_sq_3d(qx, qy, qz, node.min_x, node.max_x, node.min_y, node.max_y, node.min_z, node.max_z);
     if (box_dist_sq >= kdtree_helpers::get_max_active_dist(active_mask, best_dists)) return;
+
+    if (node.leaf_count != 0) {
+        const size_t end = node.leaf_start + node.leaf_count;
+        for (size_t i = node.leaf_start; i < end; ++i) {
+            const auto& pt = leaf_points[i];
+            double d_lon = pt.lon - q_lon;
+            if (d_lon > 180.0) d_lon -= 360.0;
+            else if (d_lon < -180.0) d_lon += 360.0;
+            double dx = qx - pt.x;
+            double dy = qy - pt.y;
+            double dz = qz - pt.z;
+            kdtree_helpers::update_quadrant_candidates(
+                pt.idx, dx * dx + dy * dy + dz * dz, active_mask,
+                pt.lat >= q_lat, pt.lat <= q_lat,
+                (d_lon >= 0.0 || d_lon == -180.0),
+                (d_lon <= 0.0 || d_lon == 180.0),
+                best_indices, best_dists
+            );
+        }
+        return;
+    }
 
     double d_lon = node.lon - q_lon;
     if (d_lon > 180.0) d_lon -= 360.0;
