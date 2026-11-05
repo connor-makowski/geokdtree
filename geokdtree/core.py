@@ -243,3 +243,16 @@ def closest_point_per_quadrant_2d(node, point):
 
     _search(node, 15)
     return {"ne": bests[0], "nw": bests[1], "se": bests[2], "sw": bests[3]}
+
+
+def validate_points(points, dimensions):
+    """Materialize and validate a batch before starting nearest searches."""
+    from math import isfinite
+
+    pts = [tuple(point) for point in points]
+    for point in pts:
+        if len(point) != dimensions:
+            raise ValueError("query dimensions must match tree dimensions")
+        if not all(isfinite(value) for value in point):
+            raise ValueError("query coordinates must be finite")
+    return pts

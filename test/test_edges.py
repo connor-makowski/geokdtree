@@ -1,5 +1,6 @@
 import pytest
 
+from geokdtree.geokdtree import __lat_lon_idx_to_xyz_idx__
 from geokdtree.geokdtree import GeoKDTree as PyGeoKDTree
 from geokdtree.kdtree import KDTree as PyKDTree
 
@@ -178,3 +179,58 @@ def test_geographic_antipodal_nearest_tie(TreeClass):
     closest = TreeClass(points).closest_point((90.0, 0.0))
 
     assert closest in points
+
+
+@pytest.mark.parametrize("TreeClass", GEO_TREES)
+@pytest.mark.parametrize("count", [1, 15, 16, 17, 31, 32, 33, 64])
+def test_geographic_leaf_bucket_sizes_and_quadrants(TreeClass, count):
+    signs = [(1, 1), (-1, 1), (1, -1), (-1, -1)]
+    points = []
+    for i in range(count):
+        lat_sign, lon_sign = signs[i % 4]
+        scale = 5.0 + i // 4
+        points.append((lat_sign * scale, lon_sign * (10.0 + scale)))
+    tree = TreeClass(points)
+    query = (0.0, 0.0)
+
+    query_xyz = __lat_lon_idx_to_xyz_idx__(*query)[:3]
+    distances = []
+    for lat, lon in points:
+        xyz = __lat_lon_idx_to_xyz_idx__(lat, lon)[:3]
+        distances.append(sum((a - b) ** 2 for a, b in zip(query_xyz, xyz)))
+    selected_idx = tree.closest_idx(query)
+    assert distances[selected_idx] == min(distances)
+
+    expected = {}
+    for quadrant, north, east in [
+        ("ne", True, True),
+        ("nw", True, False),
+        ("se", False, True),
+        ("sw", False, False),
+    ]:
+        candidates = [
+            i
+            for i, (lat, lon) in enumerate(points)
+            if (lat >= 0 if north else lat <= 0)
+            and (lon >= 0 if east else lon <= 0)
+        ]
+        expected[quadrant] = (
+            min(candidates, key=distances.__getitem__) if candidates else None
+        )
+
+    result = tree.closest_idx_per_quadrant(query)
+    for quadrant, north, east in [
+        ("ne", True, True),
+        ("nw", True, False),
+        ("se", False, True),
+        ("sw", False, False),
+    ]:
+        idx = expected[quadrant]
+        if idx is None:
+            assert result[quadrant] is None
+        else:
+            result_idx = result[quadrant]
+            lat, lon = points[result_idx]
+            assert (lat >= 0 if north else lat <= 0)
+            assert (lon >= 0 if east else lon <= 0)
+            assert distances[result_idx] == distances[idx]

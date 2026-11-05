@@ -23,5 +23,9 @@ def test_exports():
     """Verify that top-level exports are available and callable."""
     assert hasattr(geokdtree, "GeoKDTree")
     assert hasattr(geokdtree, "KDTree")
+    assert hasattr(geokdtree, "Hilbert")
+    assert hasattr(geokdtree, "GeoHilbert")
     assert callable(geokdtree.GeoKDTree)
     assert callable(geokdtree.KDTree)
+    assert callable(geokdtree.Hilbert)
+    assert callable(geokdtree.GeoHilbert)

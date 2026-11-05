@@ -1,4 +1,9 @@
-from .core import kdtree, closest_point, closest_point_per_quadrant_2d
+from .core import (
+    kdtree,
+    closest_point,
+    closest_point_per_quadrant_2d,
+    validate_points,
+)
 
 
 class KDTree:
@@ -60,3 +65,24 @@ class KDTree:
                 "closest_point_per_quadrant is only supported for 2D Cartesian points."
             )
         return closest_point_per_quadrant_2d(self.tree, point)
+
+    def closest_points(self, points: list[tuple[float | int, float | int]]):
+        """
+        Function:
+
+        - Return nearest points in query order, using the scalar search.
+
+        Required Arguments:
+
+        - `points`
+            - Type: list[tuple[float | int, float | int]]
+            - What: A list of points to query
+
+        Returns:
+
+        - A list of nearest points matching query order.
+        """
+        pts = validate_points(points, self.axis_count)
+        if pts and self.tree == 0:
+            raise ValueError("tree is empty")
+        return [self.closest_point(point) for point in pts]

@@ -76,6 +76,8 @@ struct GeoKDNode {
     double min_z = 0.0, max_z = 0.0;
     int left = -1;
     int right = -1;
+    size_t leaf_start = 0;
+    size_t leaf_count = 0;
 
     GeoKDNode() = default;
 };
@@ -169,7 +171,9 @@ public:
 // Geographic KD-Tree class (for lat/lon coordinates)
 class GeoKDTree {
 private:
+    static constexpr size_t LEAF_SIZE = 16;
     std::vector<GeoKDNode> nodes;
+    std::vector<GeoPointInternal> leaf_points;
     int root = -1;
     std::vector<std::pair<double, double>> original_points;
 
