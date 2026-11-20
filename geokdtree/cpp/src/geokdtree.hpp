@@ -187,7 +187,7 @@ public:
 // Geographic KD-Tree class (for lat/lon coordinates)
 class GeoKDTree {
 private:
-    static constexpr size_t LEAF_SIZE = 16;
+    static constexpr size_t LEAF_SIZE = 32;
     std::vector<GeoKDNode> nodes;
     std::vector<GeoPointInternal> leaf_points;
     int root = -1;
