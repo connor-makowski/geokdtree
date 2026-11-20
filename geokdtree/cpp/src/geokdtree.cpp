@@ -255,6 +255,7 @@ int KDTree::build_tree_nd(
 }
 
 void KDTree::find_closest_2d(
+    const KDNode2D* nodes_ptr,
     int node_idx,
     double px,
     double py,
@@ -263,8 +264,10 @@ void KDTree::find_closest_2d(
 ) const {
     if (node_idx < 0) return;
 
-    const auto& node = nodes_2d[node_idx];
-    if (kdtree_helpers::box_dist_sq_2d(px, py, node.min_x, node.max_x, node.min_y, node.max_y) >= best_dist) {
+    const auto& node = nodes_ptr[node_idx];
+    if (kdtree_helpers::box_dist_sq_2d(
+            px, py, node.min_x, node.max_x, node.min_y, node.max_y
+        ) >= best_dist) {
         return;
     }
 
@@ -282,22 +285,25 @@ void KDTree::find_closest_2d(
     int close = (diff < 0) ? node.left : node.right;
     int away = (diff < 0) ? node.right : node.left;
 
-    find_closest_2d(close, px, py, best_node, best_dist);
+    find_closest_2d(nodes_ptr, close, px, py, best_node, best_dist);
 
     if (diff * diff < best_dist) {
-        find_closest_2d(away, px, py, best_node, best_dist);
+        find_closest_2d(nodes_ptr, away, px, py, best_node, best_dist);
     }
 }
 
 std::pair<double, double> KDTree::closest_point_2d(double px, double py) const {
     if (root < 0) throw std::runtime_error("KDTree is empty");
+    const KDNode2D* nodes_ptr = nodes_2d.data();
     int best_node = -1;
     double best_dist = std::numeric_limits<double>::max();
-    find_closest_2d(root, px, py, best_node, best_dist);
-    return {nodes_2d[best_node].x, nodes_2d[best_node].y};
+    find_closest_2d(nodes_ptr, root, px, py, best_node, best_dist);
+    return {nodes_ptr[best_node].x, nodes_ptr[best_node].y};
 }
 
 void KDTree::find_closest_nd(
+    const KDNodeND* nodes_ptr,
+    const double* coords_ptr,
     int node_idx,
     const double* query,
     int& best_node,
@@ -306,9 +312,10 @@ void KDTree::find_closest_nd(
 ) const {
     if (node_idx < 0) return;
 
-    const auto& node = nodes_nd[node_idx];
-    const double* node_data = &nd_coords[node.coord_offset];
-    double node_dist = kdtree_helpers::squared_distance_raw(query, node_data, axis_count);
+    const auto& node = nodes_ptr[node_idx];
+    const double* node_data = coords_ptr + node.coord_offset;
+    double node_dist =
+        kdtree_helpers::squared_distance_raw(query, node_data, axis_count);
 
     if (best_node < 0 || node_dist < best_dist) {
         best_node = node_idx;
@@ -320,10 +327,14 @@ void KDTree::find_closest_nd(
     int close = (diff < 0) ? node.left : node.right;
     int away = (diff < 0) ? node.right : node.left;
 
-    find_closest_nd(close, query, best_node, best_dist, axis_count);
+    find_closest_nd(
+        nodes_ptr, coords_ptr, close, query, best_node, best_dist, axis_count
+    );
 
     if (diff * diff < best_dist) {
-        find_closest_nd(away, query, best_node, best_dist, axis_count);
+        find_closest_nd(
+            nodes_ptr, coords_ptr, away, query, best_node, best_dist, axis_count
+        );
     }
 }
 
@@ -331,8 +342,12 @@ const double* KDTree::closest_point_data(const double* query) const {
     if (root < 0) throw std::runtime_error("KDTree is empty");
     int best_node = -1;
     double best_dist = std::numeric_limits<double>::max();
-    find_closest_nd(root, query, best_node, best_dist, dimensions);
-    return &nd_coords[nodes_nd[best_node].coord_offset];
+    const KDNodeND* nodes_ptr = nodes_nd.data();
+    const double* coords_ptr = nd_coords.data();
+    find_closest_nd(
+        nodes_ptr, coords_ptr, root, query, best_node, best_dist, dimensions
+    );
+    return coords_ptr + nodes_ptr[best_node].coord_offset;
 }
 
 std::vector<double> KDTree::closest_point(const std::vector<double>& point) const {
@@ -349,9 +364,17 @@ void KDTree::closest_points_2d_batch(
     const std::vector<std::pair<double, double>>& queries,
     std::pair<double, double>* out_points
 ) const {
+    if (root < 0) throw std::runtime_error("KDTree is empty");
+    const KDNode2D* nodes_ptr = nodes_2d.data();
     const size_t n = queries.size();
     for (size_t i = 0; i < n; ++i) {
-        out_points[i] = closest_point_2d(queries[i].first, queries[i].second);
+        int best_node = -1;
+        double best_dist = std::numeric_limits<double>::max();
+        find_closest_2d(
+            nodes_ptr, root, queries[i].first, queries[i].second, best_node,
+            best_dist
+        );
+        out_points[i] = {nodes_ptr[best_node].x, nodes_ptr[best_node].y};
     }
 }
 
@@ -368,7 +391,9 @@ void KDTree::closest_point_per_quadrant_2d_raw(
         std::numeric_limits<double>::max(),
         std::numeric_limits<double>::max()
     };
-    find_closest_point_per_quadrant_2d(root, px, py, 15, best_indices, best_dists);
+    find_closest_point_per_quadrant_2d(
+        nodes_2d.data(), root, px, py, 15, best_indices, best_dists
+    );
 }
 
 std::unordered_map<std::string, std::optional<std::vector<double>>>
@@ -384,6 +409,7 @@ KDTree::closest_point_per_quadrant(const std::vector<double>& point) const {
 }
 
 void KDTree::find_closest_point_per_quadrant_2d(
+    const KDNode2D* nodes_ptr,
     int node_idx,
     double px,
     double py,
@@ -393,7 +419,7 @@ void KDTree::find_closest_point_per_quadrant_2d(
 ) const {
     if (node_idx < 0 || active_mask == 0) return;
 
-    const auto& node = nodes_2d[node_idx];
+    const auto& node = nodes_ptr[node_idx];
     if (node.min_x > px) active_mask &= (1 | 4);
     else if (node.max_x < px) active_mask &= (2 | 8);
 
@@ -425,11 +451,11 @@ void KDTree::find_closest_point_per_quadrant_2d(
         ? (active_mask & (diff < 0 ? (1 | 4) : (2 | 8)))
         : (active_mask & (diff < 0 ? (1 | 2) : (4 | 8)));
 
-    find_closest_point_per_quadrant_2d(close, px, py, active_mask, best_indices, best_dists);
+    find_closest_point_per_quadrant_2d(nodes_ptr, close, px, py, active_mask, best_indices, best_dists);
 
     if (away >= 0 && away_mask != 0) {
         if (diff * diff < kdtree_helpers::get_max_active_dist(away_mask, best_dists)) {
-            find_closest_point_per_quadrant_2d(away, px, py, away_mask, best_indices, best_dists);
+            find_closest_point_per_quadrant_2d(nodes_ptr, away, px, py, away_mask, best_indices, best_dists);
         }
     }
 }
@@ -571,6 +597,8 @@ int GeoKDTree::build_tree(
 }
 
 void GeoKDTree::find_closest_3d(
+    const GeoKDNode* nodes_ptr,
+    const GeoPointInternal* leaf_ptr,
     int node_idx,
     double qx,
     double qy,
@@ -580,24 +608,31 @@ void GeoKDTree::find_closest_3d(
 ) const {
     if (node_idx < 0) return;
 
-    const auto& node = nodes[node_idx];
-    if (kdtree_helpers::box_dist_sq_3d(qx, qy, qz, node.min_x, node.max_x, node.min_y, node.max_y, node.min_z, node.max_z) >= best_dist) {
+    const auto& node = nodes_ptr[node_idx];
+    if (kdtree_helpers::box_dist_sq_3d(
+            qx, qy, qz, node.min_x, node.max_x, node.min_y, node.max_y,
+            node.min_z, node.max_z
+        ) >= best_dist) {
         return;
     }
 
     if (node.leaf_count != 0) {
-        const size_t end = node.leaf_start + node.leaf_count;
-        for (size_t i = node.leaf_start; i < end; ++i) {
-            const auto& pt = leaf_points[i];
-            double dx = qx - pt.x;
-            double dy = qy - pt.y;
-            double dz = qz - pt.z;
+        const GeoPointInternal* pt = leaf_ptr + node.leaf_start;
+        const GeoPointInternal* const end = pt + node.leaf_count;
+        double local_best_dist = best_dist;
+        int local_best_idx = best_idx;
+        for (; pt != end; ++pt) {
+            double dx = qx - pt->x;
+            double dy = qy - pt->y;
+            double dz = qz - pt->z;
             double dist = dx * dx + dy * dy + dz * dz;
-            if (dist < best_dist) {
-                best_idx = pt.idx;
-                best_dist = dist;
+            if (dist < local_best_dist) {
+                local_best_idx = pt->idx;
+                local_best_dist = dist;
             }
         }
+        best_dist = local_best_dist;
+        best_idx = local_best_idx;
         return;
     }
 
@@ -616,10 +651,10 @@ void GeoKDTree::find_closest_3d(
     int close = (diff < 0) ? node.left : node.right;
     int away = (diff < 0) ? node.right : node.left;
 
-    find_closest_3d(close, qx, qy, qz, best_idx, best_dist);
+    find_closest_3d(nodes_ptr, leaf_ptr, close, qx, qy, qz, best_idx, best_dist);
 
     if (diff * diff < best_dist) {
-        find_closest_3d(away, qx, qy, qz, best_idx, best_dist);
+        find_closest_3d(nodes_ptr, leaf_ptr, away, qx, qy, qz, best_idx, best_dist);
     }
 }
 
@@ -630,7 +665,12 @@ int GeoKDTree::closest_idx(double lat, double lon) const {
     double cos_lat = std::cos(lat_rad);
     int best_idx = -1;
     double best_dist = std::numeric_limits<double>::max();
-    find_closest_3d(root, cos_lat * std::cos(lon_rad), cos_lat * std::sin(lon_rad), std::sin(lat_rad), best_idx, best_dist);
+    const GeoKDNode* nodes_ptr = nodes.data();
+    const GeoPointInternal* leaf_ptr = leaf_points.data();
+    find_closest_3d(
+        nodes_ptr, leaf_ptr, root, cos_lat * std::cos(lon_rad),
+        cos_lat * std::sin(lon_rad), std::sin(lat_rad), best_idx, best_dist
+    );
     return best_idx;
 }
 
@@ -655,6 +695,8 @@ void GeoKDTree::closest_indices_batch(
     constexpr double PI = 3.14159265358979323846;
     constexpr double DEG_TO_RAD = PI / 180.0;
     const size_t n = queries.size();
+    const GeoKDNode* nodes_ptr = nodes.data();
+    const GeoPointInternal* leaf_ptr = leaf_points.data();
     QueryXYZ query_xyz[BATCH_CHUNK_SIZE];
 
     for (size_t chunk_start = 0; chunk_start < n; chunk_start += BATCH_CHUNK_SIZE) {
@@ -677,6 +719,8 @@ void GeoKDTree::closest_indices_batch(
             int best_idx = -1;
             double best_dist = std::numeric_limits<double>::max();
             find_closest_3d(
+                nodes_ptr,
+                leaf_ptr,
                 root,
                 query_xyz[j].x,
                 query_xyz[j].y,
@@ -697,6 +741,8 @@ void GeoKDTree::closest_points_batch(
     constexpr double PI = 3.14159265358979323846;
     constexpr double DEG_TO_RAD = PI / 180.0;
     const size_t n = queries.size();
+    const GeoKDNode* nodes_ptr = nodes.data();
+    const GeoPointInternal* leaf_ptr = leaf_points.data();
     QueryXYZ query_xyz[BATCH_CHUNK_SIZE];
 
     for (size_t chunk_start = 0; chunk_start < n; chunk_start += BATCH_CHUNK_SIZE) {
@@ -719,6 +765,8 @@ void GeoKDTree::closest_points_batch(
             int best_idx = -1;
             double best_dist = std::numeric_limits<double>::max();
             find_closest_3d(
+                nodes_ptr,
+                leaf_ptr,
                 root,
                 query_xyz[j].x,
                 query_xyz[j].y,
@@ -755,13 +803,18 @@ void GeoKDTree::closest_idx_per_quadrant_raw(
         std::numeric_limits<double>::max(),
         std::numeric_limits<double>::max()
     };
+    const GeoKDNode* nodes_ptr = nodes.data();
+    const GeoPointInternal* leaf_ptr = leaf_points.data();
     find_closest_point_per_quadrant_3d(
-        root, cos_lat * std::cos(lon_rad), cos_lat * std::sin(lon_rad), std::sin(lat_rad),
+        nodes_ptr, leaf_ptr, root,
+        cos_lat * std::cos(lon_rad), cos_lat * std::sin(lon_rad), std::sin(lat_rad),
         lat, lon, 15, best_indices, best_dists
     );
 }
 
 void GeoKDTree::find_closest_point_per_quadrant_3d(
+    const GeoKDNode* nodes_ptr,
+    const GeoPointInternal* leaf_ptr,
     int node_idx,
     double qx,
     double qy,
@@ -774,7 +827,7 @@ void GeoKDTree::find_closest_point_per_quadrant_3d(
 ) const {
     if (node_idx < 0 || active_mask == 0) return;
 
-    const auto& node = nodes[node_idx];
+    const auto& node = nodes_ptr[node_idx];
     if (node.min_z > qz) active_mask &= (1 | 2);
     else if (node.max_z < qz) active_mask &= (4 | 8);
 
@@ -790,21 +843,21 @@ void GeoKDTree::find_closest_point_per_quadrant_3d(
     if (box_dist_sq >= max_active_d) return;
 
     if (node.leaf_count != 0) {
-        const size_t end = node.leaf_start + node.leaf_count;
-        for (size_t i = node.leaf_start; i < end; ++i) {
-            const auto& pt = leaf_points[i];
-            double dx = qx - pt.x;
-            double dy = qy - pt.y;
-            double dz = qz - pt.z;
+        const GeoPointInternal* pt = leaf_ptr + node.leaf_start;
+        const GeoPointInternal* const end = pt + node.leaf_count;
+        for (; pt != end; ++pt) {
+            double dx = qx - pt->x;
+            double dy = qy - pt->y;
+            double dz = qz - pt->z;
             double dist = dx * dx + dy * dy + dz * dz;
             if (dist >= max_active_d) continue;
 
-            double d_lon = pt.lon - q_lon;
+            double d_lon = pt->lon - q_lon;
             if (d_lon > 180.0) d_lon -= 360.0;
             else if (d_lon < -180.0) d_lon += 360.0;
             kdtree_helpers::update_quadrant_candidates(
-                pt.idx, dist, active_mask,
-                pt.lat >= q_lat, pt.lat <= q_lat,
+                pt->idx, dist, active_mask,
+                pt->lat >= q_lat, pt->lat <= q_lat,
                 (d_lon >= 0.0 || d_lon == -180.0),
                 (d_lon <= 0.0 || d_lon == 180.0),
                 best_indices, best_dists
@@ -837,11 +890,15 @@ void GeoKDTree::find_closest_point_per_quadrant_3d(
     int away = (diff < 0) ? node.right : node.left;
     int away_mask = (axis == 2) ? (active_mask & (diff < 0 ? (1 | 2) : (4 | 8))) : active_mask;
 
-    find_closest_point_per_quadrant_3d(close, qx, qy, qz, q_lat, q_lon, active_mask, best_indices, best_dists);
+    find_closest_point_per_quadrant_3d(
+        nodes_ptr, leaf_ptr, close, qx, qy, qz, q_lat, q_lon, active_mask, best_indices, best_dists
+    );
 
     if (away >= 0 && away_mask != 0) {
         if (diff * diff < kdtree_helpers::get_max_active_dist(away_mask, best_dists)) {
-            find_closest_point_per_quadrant_3d(away, qx, qy, qz, q_lat, q_lon, away_mask, best_indices, best_dists);
+            find_closest_point_per_quadrant_3d(
+                nodes_ptr, leaf_ptr, away, qx, qy, qz, q_lat, q_lon, away_mask, best_indices, best_dists
+            );
         }
     }
 }

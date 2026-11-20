@@ -136,6 +136,7 @@ private:
 
     // 2D specialized closest
     void find_closest_2d(
+        const KDNode2D* nodes_ptr,
         int node_idx,
         double px,
         double py,
@@ -145,6 +146,8 @@ private:
 
     // General N-D closest
     void find_closest_nd(
+        const KDNodeND* nodes_ptr,
+        const double* coords_ptr,
         int node_idx,
         const double* query,
         int& best_node,
@@ -154,6 +157,7 @@ private:
 
     // Find closest point per quadrant recursively (2D only)
     void find_closest_point_per_quadrant_2d(
+        const KDNode2D* nodes_ptr,
         int node_idx,
         double px,
         double py,
@@ -207,6 +211,8 @@ private:
 
     // Find closest point 3D
     void find_closest_3d(
+        const GeoKDNode* nodes_ptr,
+        const GeoPointInternal* leaf_ptr,
         int node_idx,
         double qx,
         double qy,
@@ -217,6 +223,8 @@ private:
 
     // Find closest point per quadrant recursively
     void find_closest_point_per_quadrant_3d(
+        const GeoKDNode* nodes_ptr,
+        const GeoPointInternal* leaf_ptr,
         int node_idx,
         double qx,
         double qy,
