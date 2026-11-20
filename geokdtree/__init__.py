@@ -180,9 +180,16 @@ Please open an issue to discuss changes or enhancements.
 
 """
 
-try:
-    from geokdtree.cpp import GeoKDTree, KDTree, Hilbert, GeoHilbert
-except ImportError:
+import os
+
+if os.environ.get("GEOKDTREE_REQUIRE_PYTHON") == "1":
     from geokdtree.geokdtree import GeoKDTree
     from geokdtree.kdtree import KDTree
     from geokdtree.hilbert import Hilbert, GeoHilbert
+else:
+    try:
+        from geokdtree.cpp import GeoKDTree, KDTree, Hilbert, GeoHilbert
+    except ImportError:
+        from geokdtree.geokdtree import GeoKDTree
+        from geokdtree.kdtree import KDTree
+        from geokdtree.hilbert import Hilbert, GeoHilbert

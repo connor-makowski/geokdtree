@@ -80,7 +80,11 @@ def squared_distance(p1, p2, axis_count=2):
         dy = p1[1] - p2[1]
         dz = p1[2] - p2[2]
         return dx * dx + dy * dy + dz * dz
-    return sum((p1[i] - p2[i]) ** 2 for i in range(axis_count))
+    total = 0.0
+    for i in range(axis_count):
+        d = p1[i] - p2[i]
+        total += d * d
+    return total
 
 
 def closest_point(node, point, best=None, axis_count=2, best_dist=float("inf")):
@@ -139,7 +143,7 @@ def closest_point(node, point, best=None, axis_count=2, best_dist=float("inf")):
         best_dist=best_dist,
     )
     # Check the other side if needed
-    if diff**2 < best_dist:
+    if diff * diff < best_dist:
         best, best_dist = closest_point(
             away,
             point,

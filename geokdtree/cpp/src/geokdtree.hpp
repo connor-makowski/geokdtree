@@ -44,7 +44,7 @@ struct KDNode2D {
 
 // General N-D KD-Tree node structure
 struct KDNodeND {
-    std::vector<double> point;
+    size_t coord_offset = 0;
     int axis = 0;
     int left = -1;
     int right = -1;
@@ -52,7 +52,7 @@ struct KDNodeND {
     KDNodeND() = default;
 };
 
-// Internal point for GeoKDTree building
+// Internal point for GeoKDTree building and leaf storage
 struct GeoPointInternal {
     double x = 0.0;
     double y = 0.0;
@@ -84,6 +84,19 @@ struct GeoKDNode {
 
 // Helper functions
 namespace kdtree_helpers {
+inline double squared_distance_raw(
+    const double* p1,
+    const double* p2,
+    int axis_count
+) {
+    double sum = 0.0;
+    for (int i = 0; i < axis_count; ++i) {
+        double diff = p1[i] - p2[i];
+        sum += diff * diff;
+    }
+    return sum;
+}
+
 double squared_distance(
     const std::vector<double>& p1,
     const std::vector<double>& p2,
@@ -100,6 +113,7 @@ class KDTree {
 private:
     std::vector<KDNode2D> nodes_2d;
     std::vector<KDNodeND> nodes_nd;
+    std::vector<double> nd_coords;
     int root = -1;
     int dimensions = 0;
 
@@ -132,7 +146,7 @@ private:
     // General N-D closest
     void find_closest_nd(
         int node_idx,
-        const std::vector<double>& point,
+        const double* query,
         int& best_node,
         double& best_dist,
         int axis_count
@@ -162,8 +176,13 @@ public:
     void closest_point_per_quadrant_2d_raw(
         double px, double py, int best_indices[4]
     ) const;
+    void closest_points_2d_batch(
+        const std::vector<std::pair<double, double>>& queries,
+        std::pair<double, double>* out_points
+    ) const;
 
     // Standard API methods
+    const double* closest_point_data(const double* query) const;
     std::vector<double> closest_point(const std::vector<double>& point) const;
     std::unordered_map<std::string, std::optional<std::vector<double>>>
     closest_point_per_quadrant(const std::vector<double>& point) const;
@@ -227,6 +246,16 @@ public:
     std::pair<double, double> closest_point(double lat, double lon) const;
     void closest_idx_per_quadrant_raw(
         double lat, double lon, int best_indices[4]
+    ) const;
+
+    // Fast batch queries
+    void closest_indices_batch(
+        const std::vector<std::pair<double, double>>& queries,
+        int* out_indices
+    ) const;
+    void closest_points_batch(
+        const std::vector<std::pair<double, double>>& queries,
+        std::pair<double, double>* out_points
     ) const;
 
     // Standard API methods

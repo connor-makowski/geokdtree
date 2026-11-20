@@ -141,8 +141,6 @@ inline bool extract_geo_points(
             orig[i] = {lat, lon};
         } catch (const nb::python_error&) {
             throw;
-        } catch (const nb::python_error&) {
-            throw;
         } catch (...) {
             return false;
         }
@@ -191,8 +189,6 @@ inline bool extract_kd_points_2d(
         try {
             auto p = parse_point2d(nb::handle(item));
             pts[i] = {p.first, p.second, static_cast<int>(i)};
-        } catch (const nb::python_error&) {
-            throw;
         } catch (const nb::python_error&) {
             throw;
         } catch (...) {
@@ -281,14 +277,18 @@ inline std::vector<std::pair<double, double>> validate_points_2d(
             }
         }
 
-        auto point = nb::cast<std::vector<double>>(query);
-        if (point.size() != 2) {
-            throw std::invalid_argument("query dimensions must match tree dimensions");
+        try {
+            auto point = nb::cast<std::vector<double>>(query);
+            if (point.size() != 2) {
+                throw std::invalid_argument("query dimensions must match tree dimensions");
+            }
+            if (!std::isfinite(point[0]) || !std::isfinite(point[1])) {
+                throw std::invalid_argument("query coordinates must be finite");
+            }
+            points.emplace_back(point[0], point[1]);
+        } catch (const nb::cast_error&) {
+            throw nb::type_error("coordinates must be numeric");
         }
-        if (!std::isfinite(point[0]) || !std::isfinite(point[1])) {
-            throw std::invalid_argument("query coordinates must be finite");
-        }
-        points.emplace_back(point[0], point[1]);
     }
     return points;
 }
@@ -303,13 +303,17 @@ inline std::vector<std::vector<double>> validate_points(
         points.reserve(PySequence_Fast_GET_SIZE(queries_obj));
     }
     for (nb::handle query : nb::borrow<nb::iterable>(queries)) {
-        auto point = nb::cast<std::vector<double>>(query);
-        if (point.size() != static_cast<size_t>(dimensions))
-            throw std::invalid_argument("query dimensions must match tree dimensions");
-        for (double value : point)
-            if (!std::isfinite(value))
-                throw std::invalid_argument("query coordinates must be finite");
-        points.push_back(std::move(point));
+        try {
+            auto point = nb::cast<std::vector<double>>(query);
+            if (point.size() != static_cast<size_t>(dimensions))
+                throw std::invalid_argument("query dimensions must match tree dimensions");
+            for (double value : point)
+                if (!std::isfinite(value))
+                    throw std::invalid_argument("query coordinates must be finite");
+            points.push_back(std::move(point));
+        } catch (const nb::cast_error&) {
+            throw nb::type_error("coordinates must be numeric");
+        }
     }
     return points;
 }
@@ -497,11 +501,32 @@ inline std::vector<double> parse_nd_query(nb::handle point_handle, int expected_
     std::vector<double> res(n);
     for (Py_ssize_t i = 0; i < n; ++i) {
         double v;
-        if (!extract_double(items[i], v))
+        if (GEOKDTREE_LIKELY(extract_double(items[i], v))) {
+            if (!std::isfinite(v))
+                throw std::invalid_argument("query coordinates must be finite");
+            res[i] = v;
+            continue;
+        }
+        if (PyUnicode_Check(items[i])) {
             throw nb::type_error("coordinates must be numeric");
-        if (!std::isfinite(v))
-            throw std::invalid_argument("query coordinates must be finite");
-        res[i] = v;
+        }
+        PyObject* f_obj = PyNumber_Float(items[i]);
+        if (f_obj) {
+            v = PyFloat_AS_DOUBLE(f_obj);
+            Py_DECREF(f_obj);
+            if (!std::isfinite(v))
+                throw std::invalid_argument("query coordinates must be finite");
+            res[i] = v;
+            continue;
+        }
+        if (PyErr_Occurred()) {
+            if (PyErr_ExceptionMatches(PyExc_TypeError)) {
+                PyErr_Clear();
+                throw nb::type_error("coordinates must be numeric");
+            }
+            throw nb::python_error();
+        }
+        throw nb::type_error("coordinates must be numeric");
     }
     return res;
 }
@@ -551,20 +576,47 @@ NB_MODULE(cpp, m) {
         .def("closest_points", [](const KDTree& self, nb::handle points_handle) {
             if (self.get_dimensions() == 2) {
                 auto points = validate_points_2d(points_handle);
-                nb::list out;
-                for (const auto& point : points) {
-                    auto res = self.closest_point_2d(point.first, point.second);
-                    out.append(nb::make_tuple(res.first, res.second));
+                const size_t n = points.size();
+                PyObject* list_obj = PyList_New(n);
+                if (!list_obj) throw nb::python_error();
+                std::vector<std::pair<double, double>> out(n);
+                self.closest_points_2d_batch(points, out.data());
+                for (size_t i = 0; i < n; ++i) {
+                    PyObject* t = PyTuple_New(2);
+                    if (!t) {
+                        Py_DECREF(list_obj);
+                        throw nb::python_error();
+                    }
+                    PyTuple_SET_ITEM(t, 0, PyFloat_FromDouble(out[i].first));
+                    PyTuple_SET_ITEM(t, 1, PyFloat_FromDouble(out[i].second));
+                    PyList_SET_ITEM(list_obj, i, t);
                 }
-                return out;
+                return nb::steal<nb::list>(list_obj);
             }
             auto points = validate_points(points_handle, self.get_dimensions());
-            nb::list out;
-            for (const auto& point : points) {
-                auto res = self.closest_point(point);
-                out.append(make_tuple_from_doubles(res));
+            const size_t n = points.size();
+            const Py_ssize_t dims = self.get_dimensions();
+            PyObject* list_obj = PyList_New(n);
+            if (!list_obj) throw nb::python_error();
+            for (size_t i = 0; i < n; ++i) {
+                const double* res = self.closest_point_data(points[i].data());
+                PyObject* t = PyTuple_New(dims);
+                if (!t) {
+                    Py_DECREF(list_obj);
+                    throw nb::python_error();
+                }
+                for (Py_ssize_t j = 0; j < dims; ++j) {
+                    PyObject* val = PyFloat_FromDouble(res[j]);
+                    if (!val) {
+                        Py_DECREF(t);
+                        Py_DECREF(list_obj);
+                        throw nb::python_error();
+                    }
+                    PyTuple_SET_ITEM(t, j, val);
+                }
+                PyList_SET_ITEM(list_obj, i, t);
             }
-            return out;
+            return nb::steal<nb::list>(list_obj);
         }, nb::arg("points"), "Return nearest points in query order")
         .def("closest_point", [](const KDTree& self, nb::handle point_handle) {
             if (self.get_dimensions() == 2) {
@@ -577,8 +629,19 @@ NB_MODULE(cpp, m) {
                 } catch (...) {}
             }
             auto pt = parse_nd_query(point_handle, self.get_dimensions());
-            auto res = self.closest_point(pt);
-            return make_tuple_from_doubles(res);
+            const double* res = self.closest_point_data(pt.data());
+            const Py_ssize_t dims = self.get_dimensions();
+            PyObject* t = PyTuple_New(dims);
+            if (!t) throw nb::python_error();
+            for (Py_ssize_t j = 0; j < dims; ++j) {
+                PyObject* val = PyFloat_FromDouble(res[j]);
+                if (!val) {
+                    Py_DECREF(t);
+                    throw nb::python_error();
+                }
+                PyTuple_SET_ITEM(t, j, val);
+            }
+            return nb::steal<nb::tuple>(t);
         }, nb::arg("point"), "Find the closest point to the given point")
         .def("closest_point_per_quadrant", [](const KDTree& self, nb::handle point_handle) {
             if (self.get_dimensions() != 2) {
@@ -607,26 +670,56 @@ NB_MODULE(cpp, m) {
         }, nb::arg("points"), "Build a geographic KD-Tree from a list of (latitude, longitude) pairs")
         .def("closest_indices", [](const GeoKDTree& self, nb::handle points_handle) {
             auto points = validate_points_2d(points_handle);
-            nb::list out;
-            for (const auto& point : points)
-                out.append(self.closest_idx(point.first, point.second));
-            return out;
+            const size_t n = points.size();
+            PyObject* list_obj = PyList_New(n);
+            if (!list_obj) throw nb::python_error();
+            std::vector<int> out(n);
+            self.closest_indices_batch(points, out.data());
+            for (size_t i = 0; i < n; ++i) {
+                PyObject* val = PyLong_FromLong(out[i]);
+                if (!val) {
+                    Py_DECREF(list_obj);
+                    throw nb::python_error();
+                }
+                PyList_SET_ITEM(list_obj, i, val);
+            }
+            return nb::steal<nb::list>(list_obj);
         }, nb::arg("points"), "Return original dataset indices in query order")
         .def("closest_indicies", [](const GeoKDTree& self, nb::handle points_handle) {
             auto points = validate_points_2d(points_handle);
-            nb::list out;
-            for (const auto& point : points)
-                out.append(self.closest_idx(point.first, point.second));
-            return out;
+            const size_t n = points.size();
+            PyObject* list_obj = PyList_New(n);
+            if (!list_obj) throw nb::python_error();
+            std::vector<int> out(n);
+            self.closest_indices_batch(points, out.data());
+            for (size_t i = 0; i < n; ++i) {
+                PyObject* val = PyLong_FromLong(out[i]);
+                if (!val) {
+                    Py_DECREF(list_obj);
+                    throw nb::python_error();
+                }
+                PyList_SET_ITEM(list_obj, i, val);
+            }
+            return nb::steal<nb::list>(list_obj);
         }, nb::arg("points"), "Return original dataset indices in query order")
         .def("closest_points", [](const GeoKDTree& self, nb::handle points_handle) {
             auto points = validate_points_2d(points_handle);
-            nb::list out;
-            for (const auto& point : points) {
-                auto result = self.closest_point(point.first, point.second);
-                out.append(nb::make_tuple(result.first, result.second));
+            const size_t n = points.size();
+            PyObject* list_obj = PyList_New(n);
+            if (!list_obj) throw nb::python_error();
+            std::vector<std::pair<double, double>> out(n);
+            self.closest_points_batch(points, out.data());
+            for (size_t i = 0; i < n; ++i) {
+                PyObject* t = PyTuple_New(2);
+                if (!t) {
+                    Py_DECREF(list_obj);
+                    throw nb::python_error();
+                }
+                PyTuple_SET_ITEM(t, 0, PyFloat_FromDouble(out[i].first));
+                PyTuple_SET_ITEM(t, 1, PyFloat_FromDouble(out[i].second));
+                PyList_SET_ITEM(list_obj, i, t);
             }
-            return out;
+            return nb::steal<nb::list>(list_obj);
         }, nb::arg("points"), "Return nearest geographic points in query order")
         .def("closest_idx", [](const GeoKDTree& self, nb::handle point_handle) {
             auto p = parse_point2d(point_handle);

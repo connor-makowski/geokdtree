@@ -244,3 +244,85 @@ def test_kdtree_numeric_subclasses_and_overflow(TreeClass):
         t3 = TreeClass([(0.0, 0.0, 0.0)])
         with pytest.raises((OverflowError, ValueError)):
             t3.closest_point((10**1000, 1.0, 2.0))
+
+
+class CustomFloatProto:
+    def __init__(self, v):
+        self.v = v
+
+    def __float__(self):
+        return float(self.v)
+
+
+class FailingFloatProto:
+    def __float__(self):
+        raise ValueError("failing float conversion")
+
+
+@pytest.mark.parametrize("TreeClass", IMPLEMENTATIONS)
+def test_kdtree_decimal_and_custom_float_protocols(TreeClass):
+    import decimal
+
+    points_3d = [(0.0, 0.0, 0.0), (10.0, 10.0, 10.0)]
+    tree_3d = TreeClass(points_3d)
+
+    q_bool = (True, False, 1.0)
+    assert tree_3d.closest_point(q_bool) == (0.0, 0.0, 0.0)
+    assert tree_3d.closest_points([q_bool]) == [(0.0, 0.0, 0.0)]
+
+    # C++ converts custom numeric objects with __float__ or Decimal
+    if "geokdtree.cpp" in TreeClass.__module__:
+        q_dec = (
+            decimal.Decimal("1.0"),
+            decimal.Decimal("2.0"),
+            decimal.Decimal("3.0"),
+        )
+        assert tree_3d.closest_point(q_dec) == (0.0, 0.0, 0.0)
+        assert tree_3d.closest_points([q_dec]) == [(0.0, 0.0, 0.0)]
+
+        q_proto = (
+            CustomFloatProto(1.0),
+            CustomFloatProto(2.0),
+            CustomFloatProto(3.0),
+        )
+        assert tree_3d.closest_point(q_proto) == (0.0, 0.0, 0.0)
+        assert tree_3d.closest_points([q_proto]) == [(0.0, 0.0, 0.0)]
+
+        # Failing __float__ propagates custom exception
+        with pytest.raises(ValueError, match="failing float conversion"):
+            tree_3d.closest_point((FailingFloatProto(), 0.0, 0.0))
+
+    # Strings raise TypeError
+    with pytest.raises((TypeError, ValueError)):
+        tree_3d.closest_point(("invalid_coord", 0.0, 0.0))
+    with pytest.raises((TypeError, ValueError)):
+        tree_3d.closest_points([("invalid_coord", 0.0, 0.0)])
+
+
+@pytest.mark.parametrize("TreeClass", IMPLEMENTATIONS)
+def test_kdtree_7d_queries_and_batch(TreeClass):
+    import random
+
+    rng = random.Random(42)
+    pts_7d = [tuple(rng.random() for _ in range(7)) for _ in range(50)]
+    tree_7d = TreeClass(pts_7d)
+
+    # Exact match queries
+    for pt in pts_7d[:5]:
+        assert tree_7d.closest_point(pt) == pt
+
+    # Offset queries
+    queries = [tuple(rng.random() for _ in range(7)) for _ in range(10)]
+    scalar_results = [tree_7d.closest_point(q) for q in queries]
+    batch_results = tree_7d.closest_points(queries)
+
+    assert len(batch_results) == len(queries)
+    for s, b in zip(scalar_results, batch_results):
+        assert s == b
+        assert s in pts_7d
+
+    # Dimension mismatch
+    with pytest.raises((ValueError, TypeError, IndexError)):
+        tree_7d.closest_point((0.5, 0.5, 0.5))
+    with pytest.raises((ValueError, TypeError)):
+        tree_7d.closest_points([(0.5, 0.5, 0.5)])
