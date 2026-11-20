@@ -41,11 +41,13 @@ std::vector<double> lat_lon_idx_to_xyz_idx(double lat, double lon, int idx) {
 
 inline double box_dist_sq_2d(
     double px, double py,
-    double min_x, double max_x, double min_y, double max_y
+    double min_x, double max_x, double min_y, double max_y,
+    double cutoff = std::numeric_limits<double>::max()
 ) {
     double dsq = 0.0;
     if (px < min_x) { double d = min_x - px; dsq += d * d; }
     else if (px > max_x) { double d = px - max_x; dsq += d * d; }
+    if (dsq >= cutoff) return dsq;
     if (py < min_y) { double d = min_y - py; dsq += d * d; }
     else if (py > max_y) { double d = py - max_y; dsq += d * d; }
     return dsq;
@@ -53,9 +55,11 @@ inline double box_dist_sq_2d(
 
 inline double box_dist_sq_3d(
     double qx, double qy, double qz,
-    double min_x, double max_x, double min_y, double max_y, double min_z, double max_z
+    double min_x, double max_x, double min_y, double max_y, double min_z, double max_z,
+    double cutoff = std::numeric_limits<double>::max()
 ) {
-    double dsq = box_dist_sq_2d(qx, qy, min_x, max_x, min_y, max_y);
+    double dsq = box_dist_sq_2d(qx, qy, min_x, max_x, min_y, max_y, cutoff);
+    if (dsq >= cutoff) return dsq;
     if (qz < min_z) { double d = min_z - qz; dsq += d * d; }
     else if (qz > max_z) { double d = qz - max_z; dsq += d * d; }
     return dsq;
@@ -174,14 +178,25 @@ int KDTree::build_tree_2d(
     int axis = depth % 2;
     size_t median = start + (end - start) / 2;
 
-    std::nth_element(
-        points.begin() + start,
-        points.begin() + median,
-        points.begin() + end,
-        [axis](const KDPoint2D& a, const KDPoint2D& b) {
-            return (axis == 0) ? (a.x < b.x) : (a.y < b.y);
-        }
-    );
+    if (axis == 0) {
+        std::nth_element(
+            points.begin() + start,
+            points.begin() + median,
+            points.begin() + end,
+            [](const KDPoint2D& a, const KDPoint2D& b) {
+                return a.x < b.x;
+            }
+        );
+    } else {
+        std::nth_element(
+            points.begin() + start,
+            points.begin() + median,
+            points.begin() + end,
+            [](const KDPoint2D& a, const KDPoint2D& b) {
+                return a.y < b.y;
+            }
+        );
+    }
 
     int node_idx = static_cast<int>(nodes_2d.size());
     nodes_2d.emplace_back();
@@ -266,7 +281,7 @@ void KDTree::find_closest_2d(
 
     const auto& node = nodes_ptr[node_idx];
     if (kdtree_helpers::box_dist_sq_2d(
-            px, py, node.min_x, node.max_x, node.min_y, node.max_y
+            px, py, node.min_x, node.max_x, node.min_y, node.max_y, best_dist
         ) >= best_dist) {
         return;
     }
@@ -281,7 +296,7 @@ void KDTree::find_closest_2d(
     }
 
     int axis = node.axis;
-    double diff = (axis == 0 ? px - node.x : py - node.y);
+    double diff = (axis == 0 ? dx : dy);
     int close = (diff < 0) ? node.left : node.right;
     int away = (diff < 0) ? node.right : node.left;
 
@@ -428,8 +443,10 @@ void KDTree::find_closest_point_per_quadrant_2d(
 
     if (active_mask == 0) return;
 
-    double box_dist_sq = kdtree_helpers::box_dist_sq_2d(px, py, node.min_x, node.max_x, node.min_y, node.max_y);
     double max_active_d = kdtree_helpers::get_max_active_dist(active_mask, best_dists);
+    double box_dist_sq = kdtree_helpers::box_dist_sq_2d(
+        px, py, node.min_x, node.max_x, node.min_y, node.max_y, max_active_d
+    );
     if (box_dist_sq >= max_active_d) return;
 
     double dx = px - node.x;
@@ -550,14 +567,34 @@ int GeoKDTree::build_tree(
     int axis = depth % 3;
     size_t median = start + (end - start) / 2;
 
-    std::nth_element(
-        points.begin() + start,
-        points.begin() + median,
-        points.begin() + end,
-        [axis](const GeoPointInternal& a, const GeoPointInternal& b) {
-            return (axis == 0) ? (a.x < b.x) : ((axis == 1) ? (a.y < b.y) : (a.z < b.z));
-        }
-    );
+    if (axis == 0) {
+        std::nth_element(
+            points.begin() + start,
+            points.begin() + median,
+            points.begin() + end,
+            [](const GeoPointInternal& a, const GeoPointInternal& b) {
+                return a.x < b.x;
+            }
+        );
+    } else if (axis == 1) {
+        std::nth_element(
+            points.begin() + start,
+            points.begin() + median,
+            points.begin() + end,
+            [](const GeoPointInternal& a, const GeoPointInternal& b) {
+                return a.y < b.y;
+            }
+        );
+    } else {
+        std::nth_element(
+            points.begin() + start,
+            points.begin() + median,
+            points.begin() + end,
+            [](const GeoPointInternal& a, const GeoPointInternal& b) {
+                return a.z < b.z;
+            }
+        );
+    }
 
     int node_idx = static_cast<int>(nodes.size());
     nodes.emplace_back();
@@ -611,7 +648,7 @@ void GeoKDTree::find_closest_3d(
     const auto& node = nodes_ptr[node_idx];
     if (kdtree_helpers::box_dist_sq_3d(
             qx, qy, qz, node.min_x, node.max_x, node.min_y, node.max_y,
-            node.min_z, node.max_z
+            node.min_z, node.max_z, best_dist
         ) >= best_dist) {
         return;
     }
@@ -645,9 +682,7 @@ void GeoKDTree::find_closest_3d(
     }
 
     int axis = node.axis;
-    double q_val = (axis == 0) ? qx : ((axis == 1) ? qy : qz);
-    double n_val = (axis == 0) ? node.x : ((axis == 1) ? node.y : node.z);
-    double diff = q_val - n_val;
+    double diff = (axis == 0) ? dx : ((axis == 1) ? dy : dz);
     int close = (diff < 0) ? node.left : node.right;
     int away = (diff < 0) ? node.right : node.left;
 
@@ -833,13 +868,14 @@ void GeoKDTree::find_closest_point_per_quadrant_3d(
 
     if (active_mask == 0) return;
 
+    double max_active_d = kdtree_helpers::get_max_active_dist(active_mask, best_dists);
     double box_dist_sq = kdtree_helpers::box_dist_sq_3d(
         qx, qy, qz,
         node.min_x, node.max_x,
         node.min_y, node.max_y,
-        node.min_z, node.max_z
+        node.min_z, node.max_z,
+        max_active_d
     );
-    double max_active_d = kdtree_helpers::get_max_active_dist(active_mask, best_dists);
     if (box_dist_sq >= max_active_d) return;
 
     if (node.leaf_count != 0) {
