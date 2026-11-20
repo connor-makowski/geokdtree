@@ -638,6 +638,15 @@ std::pair<double, double> GeoKDTree::closest_point(double lat, double lon) const
     return original_points[closest_idx(lat, lon)];
 }
 
+namespace {
+struct QueryXYZ {
+    double x;
+    double y;
+    double z;
+};
+constexpr size_t BATCH_CHUNK_SIZE = 1024;
+} // namespace
+
 void GeoKDTree::closest_indices_batch(
     const std::vector<std::pair<double, double>>& queries,
     int* out_indices
@@ -646,19 +655,37 @@ void GeoKDTree::closest_indices_batch(
     constexpr double PI = 3.14159265358979323846;
     constexpr double DEG_TO_RAD = PI / 180.0;
     const size_t n = queries.size();
-    for (size_t i = 0; i < n; ++i) {
-        double lat = queries[i].first;
-        double lon = queries[i].second;
-        double lat_rad = lat * DEG_TO_RAD;
-        double lon_rad = lon * DEG_TO_RAD;
-        double cos_lat = std::cos(lat_rad);
-        double qx = cos_lat * std::cos(lon_rad);
-        double qy = cos_lat * std::sin(lon_rad);
-        double qz = std::sin(lat_rad);
-        int best_idx = -1;
-        double best_dist = std::numeric_limits<double>::max();
-        find_closest_3d(root, qx, qy, qz, best_idx, best_dist);
-        out_indices[i] = best_idx;
+    QueryXYZ query_xyz[BATCH_CHUNK_SIZE];
+
+    for (size_t chunk_start = 0; chunk_start < n; chunk_start += BATCH_CHUNK_SIZE) {
+        const size_t chunk_end = std::min(chunk_start + BATCH_CHUNK_SIZE, n);
+        const size_t chunk_len = chunk_end - chunk_start;
+
+        for (size_t j = 0; j < chunk_len; ++j) {
+            const auto& q = queries[chunk_start + j];
+            double lat_rad = q.first * DEG_TO_RAD;
+            double lon_rad = q.second * DEG_TO_RAD;
+            double cos_lat = std::cos(lat_rad);
+            query_xyz[j] = {
+                cos_lat * std::cos(lon_rad),
+                cos_lat * std::sin(lon_rad),
+                std::sin(lat_rad)
+            };
+        }
+
+        for (size_t j = 0; j < chunk_len; ++j) {
+            int best_idx = -1;
+            double best_dist = std::numeric_limits<double>::max();
+            find_closest_3d(
+                root,
+                query_xyz[j].x,
+                query_xyz[j].y,
+                query_xyz[j].z,
+                best_idx,
+                best_dist
+            );
+            out_indices[chunk_start + j] = best_idx;
+        }
     }
 }
 
@@ -670,19 +697,37 @@ void GeoKDTree::closest_points_batch(
     constexpr double PI = 3.14159265358979323846;
     constexpr double DEG_TO_RAD = PI / 180.0;
     const size_t n = queries.size();
-    for (size_t i = 0; i < n; ++i) {
-        double lat = queries[i].first;
-        double lon = queries[i].second;
-        double lat_rad = lat * DEG_TO_RAD;
-        double lon_rad = lon * DEG_TO_RAD;
-        double cos_lat = std::cos(lat_rad);
-        double qx = cos_lat * std::cos(lon_rad);
-        double qy = cos_lat * std::sin(lon_rad);
-        double qz = std::sin(lat_rad);
-        int best_idx = -1;
-        double best_dist = std::numeric_limits<double>::max();
-        find_closest_3d(root, qx, qy, qz, best_idx, best_dist);
-        out_points[i] = original_points[best_idx];
+    QueryXYZ query_xyz[BATCH_CHUNK_SIZE];
+
+    for (size_t chunk_start = 0; chunk_start < n; chunk_start += BATCH_CHUNK_SIZE) {
+        const size_t chunk_end = std::min(chunk_start + BATCH_CHUNK_SIZE, n);
+        const size_t chunk_len = chunk_end - chunk_start;
+
+        for (size_t j = 0; j < chunk_len; ++j) {
+            const auto& q = queries[chunk_start + j];
+            double lat_rad = q.first * DEG_TO_RAD;
+            double lon_rad = q.second * DEG_TO_RAD;
+            double cos_lat = std::cos(lat_rad);
+            query_xyz[j] = {
+                cos_lat * std::cos(lon_rad),
+                cos_lat * std::sin(lon_rad),
+                std::sin(lat_rad)
+            };
+        }
+
+        for (size_t j = 0; j < chunk_len; ++j) {
+            int best_idx = -1;
+            double best_dist = std::numeric_limits<double>::max();
+            find_closest_3d(
+                root,
+                query_xyz[j].x,
+                query_xyz[j].y,
+                query_xyz[j].z,
+                best_idx,
+                best_dist
+            );
+            out_points[chunk_start + j] = original_points[best_idx];
+        }
     }
 }
 

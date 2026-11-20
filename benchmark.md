@@ -6,7 +6,7 @@ Automated performance benchmarks for `geokdtree` comparing C++ and Pure Python i
 
 | Attribute | Value |
 |---|---|
-| **Date** | 2026-11-20 16:49:20 UTC |
+| **Date** | 2026-11-20 17:12:05 UTC |
 | **OS** | Linux-7.0.0-43-generic-x86_64-with-glibc2.39 |
 | **Architecture** | x86_64 |
 | **Python** | CPython 3.14.5 |
@@ -24,62 +24,62 @@ Automated performance benchmarks for `geokdtree` comparing C++ and Pure Python i
 
 ### C++ vs Pure Python Comparison
 
-| Dataset Size ($N$) | C++ Build | Python Build | Build Speedup | C++ Nearest | Python Nearest | Nearest Speedup | C++ 4-Quadrant | Python 4-Quadrant | Quadrant Speedup |
-|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| 1,000 | 0.251 ms | 1.32 ms | **5.25x** | 276.4 ns | 7.36 µs | **26.6x** | 1.48 µs | 48.49 µs | **32.7x** |
-| 10,000 | 3.58 ms | 16.67 ms | **4.66x** | 359.9 ns | 9.48 µs | **26.3x** | 1.83 µs | 76.41 µs | **41.8x** |
-| 100,000 | 41.70 ms | 258.04 ms | **6.19x** | 571.5 ns | 15.09 µs | **26.4x** | 3.10 µs | 197.87 µs | **63.7x** |
-| 1,000,000 | 499.47 ms | 5.02 s | **10.05x** | 1.27 µs | 22.21 µs | **17.4x** | 6.30 µs | 576.71 µs | **91.6x** |
+| Dataset Size ($N$) | C++ Build | Python Build | Build Speedup | C++ Nearest | Python Nearest | Nearest Speedup | C++ Batch | Python Batch | Batch Speedup | C++ 4-Quadrant | Python 4-Quadrant | Quadrant Speedup |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 1,000 | 0.247 ms | 1.32 ms | **5.32x** | 275.2 ns | 7.45 µs | **27.1x** | 264.5 ns | 7.83 µs | **29.6x** | 1.52 µs | 49.03 µs | **32.2x** |
+| 10,000 | 3.63 ms | 17.22 ms | **4.75x** | 373.2 ns | 10.14 µs | **27.2x** | 360.3 ns | 9.96 µs | **27.6x** | 1.92 µs | 77.42 µs | **40.3x** |
+| 100,000 | 42.28 ms | 260.01 ms | **6.15x** | 567.9 ns | 14.89 µs | **26.2x** | 487.4 ns | 13.62 µs | **27.9x** | 2.93 µs | 193.88 µs | **66.1x** |
+| 1,000,000 | 502.69 ms | 4.98 s | **9.90x** | 1.19 µs | 21.27 µs | **17.9x** | 663.8 ns | 13.83 µs | **20.8x** | 6.27 µs | 547.40 µs | **87.3x** |
 
 ### Detailed C++ GeoKDTree Results
 
-| Points ($N$) | Build Time | `closest_idx` | `closest_point` | `closest_point_per_quadrant` | Nearest QPS | Quadrant QPS |
-|---:|---:|---:|---:|---:|---:|---:|
-| 1,000 | 0.251 ms | 276.4 ns | 304.7 ns | 1.48 µs | 3,618,180 qps | 673,763 qps |
-| 10,000 | 3.58 ms | 359.9 ns | 387.7 ns | 1.83 µs | 2,778,356 qps | 547,224 qps |
-| 100,000 | 41.70 ms | 571.5 ns | 572.0 ns | 3.10 µs | 1,749,664 qps | 322,086 qps |
-| 1,000,000 | 499.47 ms | 1.27 µs | 755.1 ns | 6.30 µs | 785,437 qps | 158,809 qps |
+| Points ($N$) | Build Time | `closest_idx` | `closest_point` | Batch (`closest_indices`) | `closest_point_per_quadrant` | Nearest QPS | Batch QPS | Quadrant QPS |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 1,000 | 0.247 ms | 275.2 ns | 305.7 ns | 264.5 ns | 1.52 µs | 3,633,380 qps | 3,780,612 qps | 657,643 qps |
+| 10,000 | 3.63 ms | 373.2 ns | 402.0 ns | 360.3 ns | 1.92 µs | 2,679,742 qps | 2,775,635 qps | 521,075 qps |
+| 100,000 | 42.28 ms | 567.9 ns | 584.6 ns | 487.4 ns | 2.93 µs | 1,760,777 qps | 2,051,715 qps | 340,760 qps |
+| 1,000,000 | 502.69 ms | 1.19 µs | 749.5 ns | 663.8 ns | 6.27 µs | 843,593 qps | 1,506,557 qps | 159,463 qps |
 
 ### Detailed Pure Python GeoKDTree Results
 
-| Points ($N$) | Build Time | `closest_idx` | `closest_point` | `closest_point_per_quadrant` | Nearest QPS | Quadrant QPS |
-|---:|---:|---:|---:|---:|---:|---:|
-| 1,000 | 1.32 ms | 7.36 µs | 7.42 µs | 48.49 µs | 135,781 qps | 20,623 qps |
-| 10,000 | 16.67 ms | 9.48 µs | 9.58 µs | 76.41 µs | 105,445 qps | 13,086 qps |
-| 100,000 | 258.04 ms | 15.09 µs | 14.48 µs | 197.87 µs | 66,289 qps | 5,053 qps |
-| 1,000,000 | 5.02 s | 22.21 µs | 13.87 µs | 576.71 µs | 45,025 qps | 1,733 qps |
+| Points ($N$) | Build Time | `closest_idx` | `closest_point` | Batch (`closest_indices`) | `closest_point_per_quadrant` | Nearest QPS | Batch QPS | Quadrant QPS |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 1,000 | 1.32 ms | 7.45 µs | 7.42 µs | 7.83 µs | 49.03 µs | 134,156 qps | 127,783 qps | 20,395 qps |
+| 10,000 | 17.22 ms | 10.14 µs | 9.85 µs | 9.96 µs | 77.42 µs | 98,635 qps | 100,421 qps | 12,916 qps |
+| 100,000 | 260.01 ms | 14.89 µs | 13.93 µs | 13.62 µs | 193.88 µs | 67,137 qps | 73,432 qps | 5,157 qps |
+| 1,000,000 | 4.98 s | 21.27 µs | 13.93 µs | 13.83 µs | 547.40 µs | 47,008 qps | 72,317 qps | 1,826 qps |
 
 
 ## KDTree Benchmarks (Cartesian 2D)
 
 ### C++ vs Pure Python Comparison
 
-| Dataset Size ($N$) | C++ Build | Python Build | Build Speedup | C++ Nearest | Python Nearest | Nearest Speedup | C++ 4-Quadrant | Python 4-Quadrant | Quadrant Speedup |
-|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| 100 | 0.021 ms | 0.095 ms | **4.59x** | 212.0 ns | 3.92 µs | **18.5x** | 820.6 ns | 20.34 µs | **24.8x** |
-| 1,000 | 0.166 ms | 0.948 ms | **5.70x** | 280.1 ns | 5.28 µs | **18.9x** | 1.03 µs | 17.21 µs | **16.7x** |
-| 10,000 | 2.06 ms | 15.19 ms | **7.37x** | 345.9 ns | 6.78 µs | **19.6x** | 1.16 µs | 20.57 µs | **17.8x** |
-| 100,000 | 25.18 ms | 210.80 ms | **8.37x** | 478.6 ns | 9.50 µs | **19.9x** | 1.34 µs | 25.26 µs | **18.9x** |
-| 1,000,000 | 306.85 ms | 4.62 s | **15.04x** | 1.33 µs | 15.50 µs | **11.7x** | 1.69 µs | 27.78 µs | **16.4x** |
+| Dataset Size ($N$) | C++ Build | Python Build | Build Speedup | C++ Nearest | Python Nearest | Nearest Speedup | C++ Batch | Python Batch | Batch Speedup | C++ 4-Quadrant | Python 4-Quadrant | Quadrant Speedup |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 100 | 0.024 ms | 0.101 ms | **4.26x** | 208.3 ns | 3.99 µs | **19.1x** | 221.1 ns | 4.19 µs | **18.9x** | 835.5 ns | 20.15 µs | **24.1x** |
+| 1,000 | 0.163 ms | 0.930 ms | **5.72x** | 273.4 ns | 5.22 µs | **19.1x** | 292.9 ns | 5.52 µs | **18.8x** | 1.03 µs | 17.07 µs | **16.5x** |
+| 10,000 | 2.01 ms | 15.49 ms | **7.71x** | 344.8 ns | 6.70 µs | **19.4x** | 358.3 ns | 6.94 µs | **19.4x** | 1.20 µs | 20.41 µs | **17.0x** |
+| 100,000 | 23.84 ms | 210.06 ms | **8.81x** | 526.0 ns | 9.49 µs | **18.0x** | 420.2 ns | 8.43 µs | **20.1x** | 1.37 µs | 24.57 µs | **18.0x** |
+| 1,000,000 | 300.52 ms | 4.62 s | **15.36x** | 1.20 µs | 14.29 µs | **11.9x** | 629.0 ns | 9.39 µs | **14.9x** | 1.62 µs | 27.22 µs | **16.8x** |
 ### Detailed C++ KDTree Results
 
-| Points ($N$) | Build Time | `closest_point` | `closest_point_per_quadrant` | Nearest QPS | Quadrant QPS |
-|---:|---:|---:|---:|---:|---:|
-| 100 | 0.021 ms | 212.0 ns | 820.6 ns | 4,715,926 qps | 1,218,692 qps |
-| 1,000 | 0.166 ms | 280.1 ns | 1.03 µs | 3,570,574 qps | 972,491 qps |
-| 10,000 | 2.06 ms | 345.9 ns | 1.16 µs | 2,891,189 qps | 862,936 qps |
-| 100,000 | 25.18 ms | 478.6 ns | 1.34 µs | 2,089,510 qps | 747,599 qps |
-| 1,000,000 | 306.85 ms | 1.33 µs | 1.69 µs | 754,275 qps | 590,782 qps |
+| Points ($N$) | Build Time | `closest_point` | Batch (`closest_points`) | `closest_point_per_quadrant` | Nearest QPS | Batch QPS | Quadrant QPS |
+|---:|---:|---:|---:|---:|---:|---:|---:|
+| 100 | 0.024 ms | 208.3 ns | 221.1 ns | 835.5 ns | 4,800,528 qps | 4,521,842 qps | 1,196,847 qps |
+| 1,000 | 0.163 ms | 273.4 ns | 292.9 ns | 1.03 µs | 3,657,960 qps | 3,414,092 qps | 968,950 qps |
+| 10,000 | 2.01 ms | 344.8 ns | 358.3 ns | 1.20 µs | 2,899,910 qps | 2,791,067 qps | 835,079 qps |
+| 100,000 | 23.84 ms | 526.0 ns | 420.2 ns | 1.37 µs | 1,900,992 qps | 2,379,649 qps | 731,130 qps |
+| 1,000,000 | 300.52 ms | 1.20 µs | 629.0 ns | 1.62 µs | 831,504 qps | 1,589,825 qps | 616,488 qps |
 
 ### Detailed Pure Python KDTree Results
 
-| Points ($N$) | Build Time | `closest_point` | `closest_point_per_quadrant` | Nearest QPS | Quadrant QPS |
-|---:|---:|---:|---:|---:|---:|
-| 100 | 0.095 ms | 3.92 µs | 20.34 µs | 255,215 qps | 49,170 qps |
-| 1,000 | 0.948 ms | 5.28 µs | 17.21 µs | 189,357 qps | 58,094 qps |
-| 10,000 | 15.19 ms | 6.78 µs | 20.57 µs | 147,467 qps | 48,607 qps |
-| 100,000 | 210.80 ms | 9.50 µs | 25.26 µs | 105,252 qps | 39,584 qps |
-| 1,000,000 | 4.62 s | 15.50 µs | 27.78 µs | 64,532 qps | 36,002 qps |
+| Points ($N$) | Build Time | `closest_point` | Batch (`closest_points`) | `closest_point_per_quadrant` | Nearest QPS | Batch QPS | Quadrant QPS |
+|---:|---:|---:|---:|---:|---:|---:|---:|
+| 100 | 0.101 ms | 3.99 µs | 4.19 µs | 20.15 µs | 250,799 qps | 238,707 qps | 49,636 qps |
+| 1,000 | 0.930 ms | 5.22 µs | 5.52 µs | 17.07 µs | 191,408 qps | 181,296 qps | 58,594 qps |
+| 10,000 | 15.49 ms | 6.70 µs | 6.94 µs | 20.41 µs | 149,201 qps | 144,150 qps | 49,003 qps |
+| 100,000 | 210.06 ms | 9.49 µs | 8.43 µs | 24.57 µs | 105,367 qps | 118,620 qps | 40,693 qps |
+| 1,000,000 | 4.62 s | 14.29 µs | 9.39 µs | 27.22 µs | 69,966 qps | 106,460 qps | 36,741 qps |
 
 
 ## GeoHilbert Benchmarks (Latitude/Longitude)
@@ -88,28 +88,28 @@ Automated performance benchmarks for `geokdtree` comparing C++ and Pure Python i
 
 | Dataset Size ($N$) | C++ Build | Python Build | Build Speedup | C++ Nearest | Python Nearest | Nearest Speedup | C++ Order | Python Order | Order Speedup |
 |---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| 1,000 | 0.455 ms | 18.49 ms | **40.67x** | 426.1 ns | 22.57 µs | **53.0x** | 0.025 ms | 0.009 ms | **0.4x** |
-| 10,000 | 4.46 ms | 183.60 ms | **41.12x** | 433.2 ns | 22.22 µs | **51.3x** | 0.186 ms | 0.026 ms | **0.1x** |
-| 100,000 | 46.46 ms | 1.89 s | **40.61x** | 448.0 ns | 22.62 µs | **50.5x** | 2.05 ms | 0.632 ms | **0.3x** |
-| 1,000,000 | 575.54 ms | 18.81 s | **32.69x** | 550.3 ns | 22.90 µs | **41.6x** | 19.94 ms | 15.95 ms | **0.8x** |
+| 1,000 | 0.457 ms | 18.65 ms | **40.82x** | 427.1 ns | 22.73 µs | **53.2x** | 0.021 ms | 0.007 ms | **0.3x** |
+| 10,000 | 4.52 ms | 189.14 ms | **41.84x** | 442.8 ns | 23.03 µs | **52.0x** | 0.234 ms | 0.026 ms | **0.1x** |
+| 100,000 | 47.36 ms | 1.86 s | **39.25x** | 469.3 ns | 22.71 µs | **48.4x** | 2.03 ms | 0.604 ms | **0.3x** |
+| 1,000,000 | 549.80 ms | 18.95 s | **34.46x** | 636.7 ns | 23.09 µs | **36.3x** | 20.20 ms | 14.28 ms | **0.7x** |
 
 ### Detailed C++ GeoHilbert Results
 
-| Points ($N$) | Build Time | `closest_point` | `closest_idx` | `hilbert_order` | Nearest QPS |
-|---:|---:|---:|---:|---:|---:|
-| 1,000 | 0.455 ms | 426.1 ns | 414.1 ns | 0.025 ms | 2,347,060 qps |
-| 10,000 | 4.46 ms | 433.2 ns | 398.2 ns | 0.186 ms | 2,308,304 qps |
-| 100,000 | 46.46 ms | 448.0 ns | 436.2 ns | 2.05 ms | 2,232,127 qps |
-| 1,000,000 | 575.54 ms | 550.3 ns | 709.1 ns | 19.94 ms | 1,817,207 qps |
+| Points ($N$) | Build Time | `closest_point` | `closest_idx` | Batch (`closest_indices`) | `hilbert_order` | Nearest QPS | Batch QPS |
+|---:|---:|---:|---:|---:|---:|---:|---:|
+| 1,000 | 0.457 ms | 427.1 ns | 391.2 ns | 395.1 ns | 0.021 ms | 2,341,422 qps | 2,530,825 qps |
+| 10,000 | 4.52 ms | 442.8 ns | 410.9 ns | 406.9 ns | 0.234 ms | 2,258,474 qps | 2,457,532 qps |
+| 100,000 | 47.36 ms | 469.3 ns | 429.7 ns | 440.5 ns | 2.03 ms | 2,130,864 qps | 2,269,951 qps |
+| 1,000,000 | 549.80 ms | 636.7 ns | 623.5 ns | 580.6 ns | 20.20 ms | 1,570,697 qps | 1,722,489 qps |
 
 ### Detailed Pure Python GeoHilbert Results
 
-| Points ($N$) | Build Time | `closest_point` | `closest_idx` | `hilbert_order` | Nearest QPS |
-|---:|---:|---:|---:|---:|---:|
-| 1,000 | 18.49 ms | 22.57 µs | 22.42 µs | 0.009 ms | 44,304 qps |
-| 10,000 | 183.60 ms | 22.22 µs | 22.20 µs | 0.026 ms | 45,013 qps |
-| 100,000 | 1.89 s | 22.62 µs | 23.40 µs | 0.632 ms | 44,212 qps |
-| 1,000,000 | 18.81 s | 22.90 µs | 25.53 µs | 15.95 ms | 43,677 qps |
+| Points ($N$) | Build Time | `closest_point` | `closest_idx` | Batch (`closest_indices`) | `hilbert_order` | Nearest QPS | Batch QPS |
+|---:|---:|---:|---:|---:|---:|---:|---:|
+| 1,000 | 18.65 ms | 22.73 µs | 22.77 µs | 23.04 µs | 0.007 ms | 43,987 qps | 43,395 qps |
+| 10,000 | 189.14 ms | 23.03 µs | 22.92 µs | 23.23 µs | 0.026 ms | 43,418 qps | 43,055 qps |
+| 100,000 | 1.86 s | 22.71 µs | 23.44 µs | 22.79 µs | 0.604 ms | 44,026 qps | 43,881 qps |
+| 1,000,000 | 18.95 s | 23.09 µs | 26.09 µs | 23.19 µs | 14.28 ms | 43,308 qps | 43,121 qps |
 
 
 ## Hilbert Benchmarks (Cartesian 2D)
@@ -118,28 +118,28 @@ Automated performance benchmarks for `geokdtree` comparing C++ and Pure Python i
 
 | Dataset Size ($N$) | C++ Build | Python Build | Build Speedup | C++ Nearest | Python Nearest | Nearest Speedup | C++ Order | Python Order | Order Speedup |
 |---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| 1,000 | 0.413 ms | 11.34 ms | **27.46x** | 418.5 ns | 14.39 µs | **34.4x** | 0.023 ms | 0.008 ms | **0.3x** |
-| 10,000 | 3.97 ms | 112.83 ms | **28.43x** | 429.7 ns | 14.34 µs | **33.4x** | 0.232 ms | 0.031 ms | **0.1x** |
-| 100,000 | 42.45 ms | 1.13 s | **26.63x** | 432.7 ns | 14.53 µs | **33.6x** | 2.09 ms | 0.516 ms | **0.2x** |
-| 1,000,000 | 522.02 ms | 11.57 s | **22.15x** | 653.1 ns | 14.60 µs | **22.4x** | 31.08 ms | 14.76 ms | **0.5x** |
+| 1,000 | 0.563 ms | 11.29 ms | **20.04x** | 419.1 ns | 14.51 µs | **34.6x** | 0.021 ms | 0.007 ms | **0.3x** |
+| 10,000 | 4.10 ms | 113.75 ms | **27.76x** | 420.8 ns | 14.50 µs | **34.5x** | 0.177 ms | 0.026 ms | **0.1x** |
+| 100,000 | 43.90 ms | 1.13 s | **25.76x** | 441.4 ns | 14.68 µs | **33.3x** | 2.15 ms | 0.570 ms | **0.3x** |
+| 1,000,000 | 515.65 ms | 11.58 s | **22.46x** | 648.9 ns | 14.27 µs | **22.0x** | 30.48 ms | 16.64 ms | **0.5x** |
 
 ### Detailed C++ Hilbert Results
 
-| Points ($N$) | Build Time | `closest_point` | `closest_idx` | `hilbert_order` | Nearest QPS |
-|---:|---:|---:|---:|---:|---:|
-| 1,000 | 0.413 ms | 418.5 ns | 362.6 ns | 0.023 ms | 2,389,585 qps |
-| 10,000 | 3.97 ms | 429.7 ns | 367.4 ns | 0.232 ms | 2,327,161 qps |
-| 100,000 | 42.45 ms | 432.7 ns | 402.2 ns | 2.09 ms | 2,311,048 qps |
-| 1,000,000 | 522.02 ms | 653.1 ns | 601.7 ns | 31.08 ms | 1,531,053 qps |
+| Points ($N$) | Build Time | `closest_point` | `closest_idx` | Batch (`closest_indices`) | `hilbert_order` | Nearest QPS | Batch QPS |
+|---:|---:|---:|---:|---:|---:|---:|---:|
+| 1,000 | 0.563 ms | 419.1 ns | 379.5 ns | 372.7 ns | 0.021 ms | 2,386,101 qps | 2,682,810 qps |
+| 10,000 | 4.10 ms | 420.8 ns | 374.1 ns | 393.6 ns | 0.177 ms | 2,376,703 qps | 2,540,436 qps |
+| 100,000 | 43.90 ms | 441.4 ns | 411.4 ns | 419.7 ns | 2.15 ms | 2,265,262 qps | 2,382,722 qps |
+| 1,000,000 | 515.65 ms | 648.9 ns | 594.3 ns | 500.6 ns | 30.48 ms | 1,541,105 qps | 1,997,782 qps |
 
 ### Detailed Pure Python Hilbert Results
 
-| Points ($N$) | Build Time | `closest_point` | `closest_idx` | `hilbert_order` | Nearest QPS |
-|---:|---:|---:|---:|---:|---:|
-| 1,000 | 11.34 ms | 14.39 µs | 14.33 µs | 0.008 ms | 69,476 qps |
-| 10,000 | 112.83 ms | 14.34 µs | 14.41 µs | 0.031 ms | 69,744 qps |
-| 100,000 | 1.13 s | 14.53 µs | 15.04 µs | 0.516 ms | 68,827 qps |
-| 1,000,000 | 11.57 s | 14.60 µs | 17.59 µs | 14.76 ms | 68,501 qps |
+| Points ($N$) | Build Time | `closest_point` | `closest_idx` | Batch (`closest_indices`) | `hilbert_order` | Nearest QPS | Batch QPS |
+|---:|---:|---:|---:|---:|---:|---:|---:|
+| 1,000 | 11.29 ms | 14.51 µs | 14.53 µs | 14.72 µs | 0.007 ms | 68,935 qps | 67,937 qps |
+| 10,000 | 113.75 ms | 14.50 µs | 14.43 µs | 14.51 µs | 0.026 ms | 68,961 qps | 68,939 qps |
+| 100,000 | 1.13 s | 14.68 µs | 15.14 µs | 14.83 µs | 0.570 ms | 68,114 qps | 67,452 qps |
+| 1,000,000 | 11.58 s | 14.27 µs | 17.39 µs | 14.69 µs | 16.64 ms | 70,086 qps | 68,067 qps |
 
 
 ## Methodology
