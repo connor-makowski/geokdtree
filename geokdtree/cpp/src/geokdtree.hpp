@@ -133,7 +133,7 @@ private:
     void find_closest_nd(
         int node_idx,
         const std::vector<double>& point,
-        std::vector<double>& best,
+        int& best_node,
         double& best_dist,
         int axis_count
     ) const;
@@ -151,6 +151,7 @@ private:
 public:
     // Constructors
     explicit KDTree(const std::vector<std::vector<double>>& points);
+    explicit KDTree(std::vector<std::vector<double>>&& points);
     explicit KDTree(std::vector<KDPoint2D> pts);
 
     int get_dimensions() const { return dimensions; }

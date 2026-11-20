@@ -77,9 +77,7 @@ except ImportError:
     from geokdtree.geokdtree import GeoKDTree
     from geokdtree.kdtree import KDTree
     from geokdtree.hilbert import Hilbert, GeoHilbert"""
-geokdtree.write_text(
-    f'r"""\n{readme}\n"""\n\n{import_string}\n'
-)
+geokdtree.write_text(f'r"""\n{readme}\n"""\n\n{import_string}\n')
 
 # Update the versions manifest loaded dynamically by client-side JS
 update_versions_manifest()

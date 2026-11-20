@@ -108,3 +108,139 @@ def test_kdtree_closest_point_per_quadrant_error_on_3d(TreeClass):
     tree = TreeClass(points)
     with pytest.raises((ValueError, Exception)):
         tree.closest_point_per_quadrant((0, 0, 0))
+
+
+@pytest.mark.parametrize("TreeClass", IMPLEMENTATIONS)
+def test_kdtree_batch_queries_2d(TreeClass):
+    points = [(0.0, 0.0), (10.0, 10.0), (5.0, 5.0)]
+    tree = TreeClass(points)
+    queries = [(1.0, 1.0), (9.0, 9.0), (4.0, 6.0)]
+    expected = [(0.0, 0.0), (10.0, 10.0), (5.0, 5.0)]
+    assert tree.closest_points(queries) == expected
+    # Generator support
+    assert tree.closest_points(q for q in queries) == expected
+    # Empty batch
+    assert tree.closest_points([]) == []
+
+
+@pytest.mark.parametrize("TreeClass", IMPLEMENTATIONS)
+def test_kdtree_batch_queries_nd(TreeClass):
+    # 1D
+    t1 = TreeClass([(1.0,), (5.0,), (10.0,)])
+    assert t1.closest_points([(2.0,), (8.0,)]) == [(1.0,), (10.0,)]
+    assert t1.closest_points([]) == []
+
+    # 3D
+    t3 = TreeClass([(0.0, 0.0, 0.0), (10.0, 10.0, 10.0)])
+    assert t3.closest_points([(1.0, 1.0, 1.0), (9.0, 9.0, 9.0)]) == [
+        (0.0, 0.0, 0.0),
+        (10.0, 10.0, 10.0),
+    ]
+
+
+@pytest.mark.parametrize("TreeClass", IMPLEMENTATIONS)
+def test_kdtree_batch_validation_errors(TreeClass):
+    tree = TreeClass([(0.0, 0.0), (1.0, 1.0)])
+    # Wrong dimension
+    with pytest.raises((ValueError, TypeError)):
+        tree.closest_points([(1.0,)])
+    with pytest.raises((ValueError, TypeError)):
+        tree.closest_points([(1.0, 2.0, 3.0)])
+    # Non-finite coordinates
+    with pytest.raises((ValueError, TypeError)):
+        tree.closest_points([(1.0, float("nan"))])
+    with pytest.raises((ValueError, TypeError)):
+        tree.closest_points([(float("inf"), 1.0)])
+
+    # Integer overflow in batch conversion
+    with pytest.raises((OverflowError, ValueError)):
+        tree.closest_points([(10**1000, 1.0)])
+
+    # Late invalid item in generator
+    def gen_with_bad_tail():
+        yield (0.5, 0.5)
+        yield (1.0, float("nan"))
+
+    with pytest.raises((ValueError, TypeError)):
+        tree.closest_points(gen_with_bad_tail())
+
+
+@pytest.mark.parametrize("TreeClass", IMPLEMENTATIONS)
+def test_kdtree_tie_breaking_and_duplicates(TreeClass):
+    # Multiple points with identical distances: deterministic root median winner
+    points = [(1.0, 0.0, 0.0), (-1.0, 0.0, 0.0)]
+    tree = TreeClass(points)
+    assert tree.closest_point((0.0, 0.0, 0.0)) == (1.0, 0.0, 0.0)
+
+    # 1D ties
+    t1 = TreeClass([(1.0,), (-1.0,)])
+    assert t1.closest_point((0.0,)) == (1.0,)
+
+    # 2D ties
+    t2 = TreeClass([(1.0, 0.0), (-1.0, 0.0), (0.0, 1.0), (0.0, -1.0)])
+    assert t2.closest_point((0.0, 0.0)) in [
+        (1.0, 0.0),
+        (-1.0, 0.0),
+        (0.0, 1.0),
+        (0.0, -1.0),
+    ]
+
+    # 7D ties
+    p7_pos = (1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+    p7_neg = (-1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+    t7 = TreeClass([p7_pos, p7_neg])
+    assert t7.closest_point((0.0,) * 7) == p7_pos
+
+    # Duplicate coordinates in dataset
+    dup_points = [
+        (2.0, 3.0, 4.0),
+        (0.0, 0.0, 0.0),
+        (2.0, 3.0, 4.0),
+        (-1.0, -1.0, -1.0),
+    ]
+    dup_tree = TreeClass(dup_points)
+    assert dup_tree.closest_point((2.0, 3.0, 4.0)) == (2.0, 3.0, 4.0)
+    assert dup_tree.closest_point((2.0, 3.0, 4.1)) == (2.0, 3.0, 4.0)
+    assert dup_tree.closest_points([(2.0, 3.0, 4.0), (-1.0, -1.0, -1.0)]) == [
+        (2.0, 3.0, 4.0),
+        (-1.0, -1.0, -1.0),
+    ]
+
+
+class CustomFloat(float):
+    pass
+
+
+class CustomInt(int):
+    pass
+
+
+@pytest.mark.parametrize("TreeClass", IMPLEMENTATIONS)
+def test_kdtree_numeric_subclasses_and_overflow(TreeClass):
+    # Custom numeric subclasses work transparently
+    pts = [(CustomFloat(1.0), CustomInt(2)), (CustomFloat(3.0), CustomInt(4))]
+    tree = TreeClass(pts)
+    assert tree.closest_point((CustomFloat(1.1), CustomInt(2))) == (1.0, 2.0)
+    assert tree.closest_points([(CustomFloat(1.1), CustomInt(2))]) == [
+        (1.0, 2.0)
+    ]
+
+    # Batch overflow is validated on both backends via math.isfinite / extract_double
+    with pytest.raises((OverflowError, ValueError)):
+        tree.closest_points([(10**1000, 1.0)])
+
+    # C++ native type conversions require coordinates to fit in double
+    if "geokdtree.cpp" in TreeClass.__module__:
+        # Overflow in construction
+        with pytest.raises((OverflowError, ValueError)):
+            TreeClass([(10**1000, 1.0)])
+
+        # Overflow in scalar query
+        t2 = TreeClass([(0.0, 0.0)])
+        with pytest.raises((OverflowError, ValueError)):
+            t2.closest_point((10**1000, 1.0))
+
+        # Overflow in 3D query
+        t3 = TreeClass([(0.0, 0.0, 0.0)])
+        with pytest.raises((OverflowError, ValueError)):
+            t3.closest_point((10**1000, 1.0, 2.0))

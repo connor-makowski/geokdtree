@@ -231,6 +231,6 @@ def test_geographic_leaf_bucket_sizes_and_quadrants(TreeClass, count):
         else:
             result_idx = result[quadrant]
             lat, lon = points[result_idx]
-            assert (lat >= 0 if north else lat <= 0)
-            assert (lon >= 0 if east else lon <= 0)
+            assert lat >= 0 if north else lat <= 0
+            assert lon >= 0 if east else lon <= 0
             assert distances[result_idx] == distances[idx]

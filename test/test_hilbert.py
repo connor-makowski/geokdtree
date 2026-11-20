@@ -375,3 +375,191 @@ def test_geohilbert_parity_with_python():
     for q in queries:
         assert gh_native.closest_idx(q) == gh_py.closest_idx(q)
         assert gh_native.closest_point(q) == gh_py.closest_point(q)
+
+
+class CustomIndex:
+    def __init__(self, val):
+        self.val = val
+
+    def __index__(self):
+        return self.val
+
+
+def test_hilbert_protocols_and_boundaries():
+    funcs = [hilbert_index]
+    if native_index is not None:
+        funcs.append(native_index)
+
+    for fn in funcs:
+        # Custom __index__ objects
+        assert fn((CustomIndex(1), CustomIndex(2)), bits=CustomIndex(2)) == 7
+        # Generator coordinates
+        assert fn((c for c in (1, 2)), bits=2) == 7
+        # Boolean rejection
+        with pytest.raises(TypeError):
+            fn((True, 1), bits=2)
+        with pytest.raises(TypeError):
+            fn((1, 2), bits=True)
+
+    coord_funcs = [hilbert_coordinates]
+    if native_coordinates is not None:
+        coord_funcs.append(native_coordinates)
+
+    for fn in coord_funcs:
+        # Custom __index__ objects
+        assert fn(
+            CustomIndex(7),
+            dimensions=CustomIndex(2),
+            bits=CustomIndex(2),
+        ) == (1, 2)
+        # Boolean rejection
+        with pytest.raises(TypeError):
+            fn(True, dimensions=2, bits=2)
+        with pytest.raises(TypeError):
+            fn(7, dimensions=True, bits=2)
+        with pytest.raises(TypeError):
+            fn(7, dimensions=2, bits=True)
+
+
+def test_hilbert_total_bit_boundaries():
+    # Exactly 64 bits: (2, 32), (4, 16), (16, 4)
+    # 65 bits: (5, 13)
+    p64 = (1, 2)
+    key64 = hilbert_index(p64, bits=32)
+    assert hilbert_coordinates(key64, dimensions=2, bits=32) == p64
+    if native_index is not None:
+        assert native_index(p64, bits=32) == key64
+        assert native_coordinates(key64, dimensions=2, bits=32) == p64
+
+    p65 = (1, 2, 3, 4, 5)
+    key65 = hilbert_index(p65, bits=13)
+    assert hilbert_coordinates(key65, dimensions=5, bits=13) == p65
+    if native_index is not None:
+        assert native_index(p65, bits=13) == key65
+        assert native_coordinates(key65, dimensions=5, bits=13) == p65
+
+
+def test_hilbert_arbitrary_precision_and_dimension_limits():
+    # 1D with large bits
+    large_bits = 1000
+    p = (123456789012345678901234567890,)
+    key = hilbert_index(p, bits=large_bits)
+    assert hilbert_coordinates(key, dimensions=1, bits=large_bits) == p
+    if native_index is not None:
+        assert native_index(p, bits=large_bits) == key
+        assert native_coordinates(key, dimensions=1, bits=large_bits) == p
+
+    # 17 dimensions (exceeds native 16-element scratch array)
+    p17 = tuple(i % 4 for i in range(17))
+    key17 = hilbert_index(p17, bits=2)
+    assert hilbert_coordinates(key17, dimensions=17, bits=2) == p17
+    if native_index is not None:
+        assert native_index(p17, bits=2) == key17
+        assert native_coordinates(key17, dimensions=17, bits=2) == p17
+
+
+@pytest.mark.skipif(native_index is None, reason="C++ extension is unavailable")
+def test_native_hilbert_dispatch_computes_transform_once(monkeypatch):
+    import geokdtree.hilbert as py_hilbert
+
+    index_compute = py_hilbert._hilbert_index_compute
+    coordinate_compute = py_hilbert._hilbert_coordinates_compute
+    calls = {"index": 0, "coordinates": 0}
+
+    def count_index(*args):
+        calls["index"] += 1
+        return index_compute(*args)
+
+    def count_coordinates(*args):
+        calls["coordinates"] += 1
+        return coordinate_compute(*args)
+
+    monkeypatch.setattr(py_hilbert, "_hilbert_index_compute", count_index)
+    monkeypatch.setattr(
+        py_hilbert, "_hilbert_coordinates_compute", count_coordinates
+    )
+    key = native_index((1, 2), bits=2)
+    assert calls["index"] == 0
+    assert native_coordinates(key, dimensions=2, bits=2) == (1, 2)
+    assert calls["coordinates"] == 0
+
+    assert native_index((1, 2, 3), bits=22) == index_compute([1, 2, 3], 22)
+    assert calls["index"] == 1
+    key = index_compute([1, 2, 3], 22)
+    assert native_coordinates(key, dimensions=3, bits=22) == (1, 2, 3)
+    assert calls["coordinates"] == 1
+
+
+@pytest.mark.skipif(native_index is None, reason="C++ extension is unavailable")
+def test_native_hilbert_large_metadata_uses_python_fallback(monkeypatch):
+    import geokdtree.hilbert as py_hilbert
+
+    huge = 1 << 10000
+    index_calls = []
+    coordinate_calls = []
+
+    monkeypatch.setattr(
+        py_hilbert,
+        "_validate_hilbert_index",
+        lambda coordinates, bits: ([0], huge),
+    )
+    monkeypatch.setattr(
+        py_hilbert,
+        "_hilbert_index_compute",
+        lambda coordinates, bits: index_calls.append((coordinates, bits)) or 0,
+    )
+    assert native_index((0,), bits=1) == 0
+    assert len(index_calls) == 1
+    assert index_calls[0][1] == huge
+
+    monkeypatch.setattr(
+        py_hilbert,
+        "_validate_hilbert_coordinates",
+        lambda index, dimensions, bits: (0, 1, huge),
+    )
+    monkeypatch.setattr(
+        py_hilbert,
+        "_hilbert_coordinates_compute",
+        lambda index, dimensions, bits: coordinate_calls.append(
+            (index, dimensions, bits)
+        )
+        or (0,),
+    )
+    assert native_coordinates(0, dimensions=1, bits=1) == (0,)
+    assert len(coordinate_calls) == 1
+    assert coordinate_calls[0][2] == huge
+
+
+def test_native_hilbert_dimension_limit_guard():
+    if native_index is None:
+        pytest.skip("C++ extension is unavailable")
+    from geokdtree.cpp import Hilbert as NativeHilbert
+
+    # 17 dimensions exceeds native 16-element scratch array
+    with pytest.raises(ValueError, match="16 dimensions"):
+        NativeHilbert([(0.0,) * 17], 2)
+
+
+def test_geohilbert_batch_validation_errors():
+    from geokdtree import GeoHilbert
+
+    gh = GeoHilbert([(0.0, 0.0), (10.0, 10.0)])
+    # Wrong dimensions
+    with pytest.raises((ValueError, TypeError)):
+        gh.closest_points([(1.0,)])
+    with pytest.raises((ValueError, TypeError)):
+        gh.closest_points([(1.0, 2.0, 3.0)])
+    # Non-finite coordinates
+    with pytest.raises((ValueError, TypeError)):
+        gh.closest_points([(1.0, float("nan"))])
+    # Integer overflow
+    with pytest.raises((OverflowError, ValueError)):
+        gh.closest_points([(10**1000, 1.0)])
+
+    # Generator with error
+    def bad_gen():
+        yield (0.0, 0.0)
+        yield (10**1000, 0.0)
+
+    with pytest.raises((OverflowError, ValueError)):
+        gh.closest_points(bad_gen())

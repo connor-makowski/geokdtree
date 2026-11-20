@@ -11,8 +11,8 @@
 
 namespace hilbert_helpers {
 inline void validate(int dimensions, int bits) {
-    if (dimensions <= 0 || bits <= 0 || bits > 64 || dimensions > 64 / bits)
-        throw std::invalid_argument("native Hilbert keys require 1..64 total bits");
+    if (dimensions <= 0 || bits <= 0 || bits > 64 || dimensions > 64 / bits || dimensions > 16)
+        throw std::invalid_argument("native Hilbert keys require 1..64 total bits and at most 16 dimensions");
 }
 
 inline uint64_t index_fast(const uint64_t* in_x, int n, int bits) {

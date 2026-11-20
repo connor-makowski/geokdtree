@@ -128,6 +128,27 @@ KDTree::KDTree(const std::vector<std::vector<double>>& points) {
     }
 }
 
+KDTree::KDTree(std::vector<std::vector<double>>&& points) {
+    if (points.empty()) {
+        throw std::invalid_argument("Cannot build KDTree from empty point list");
+    }
+
+    dimensions = static_cast<int>(points[0].size());
+    if (dimensions == 2) {
+        nodes_2d.clear();
+        nodes_2d.reserve(points.size());
+        std::vector<KDPoint2D> pts(points.size());
+        for (size_t i = 0; i < points.size(); ++i) {
+            pts[i] = {points[i][0], points[i][1], static_cast<int>(i)};
+        }
+        root = build_tree_2d(pts, 0, pts.size(), 0);
+    } else {
+        nodes_nd.clear();
+        nodes_nd.reserve(points.size());
+        root = build_tree_nd(points, 0, points.size(), 0, dimensions);
+    }
+}
+
 KDTree::KDTree(std::vector<KDPoint2D> pts) {
     if (pts.empty()) {
         throw std::invalid_argument("Cannot build KDTree from empty point list");
@@ -215,7 +236,7 @@ int KDTree::build_tree_nd(
 
     int node_idx = static_cast<int>(nodes_nd.size());
     nodes_nd.emplace_back();
-    nodes_nd[node_idx].point = points[median];
+    nodes_nd[node_idx].point = std::move(points[median]);
     nodes_nd[node_idx].axis = axis;
 
     int left = build_tree_nd(points, start, median, depth + 1, axis_count);
@@ -273,7 +294,7 @@ std::pair<double, double> KDTree::closest_point_2d(double px, double py) const {
 void KDTree::find_closest_nd(
     int node_idx,
     const std::vector<double>& point,
-    std::vector<double>& best,
+    int& best_node,
     double& best_dist,
     int axis_count
 ) const {
@@ -282,8 +303,8 @@ void KDTree::find_closest_nd(
     const auto& node = nodes_nd[node_idx];
     double node_dist = kdtree_helpers::squared_distance(point, node.point, axis_count);
 
-    if (best.empty() || node_dist < best_dist) {
-        best = node.point;
+    if (best_node < 0 || node_dist < best_dist) {
+        best_node = node_idx;
         best_dist = node_dist;
     }
 
@@ -292,10 +313,10 @@ void KDTree::find_closest_nd(
     int close = (diff < 0) ? node.left : node.right;
     int away = (diff < 0) ? node.right : node.left;
 
-    find_closest_nd(close, point, best, best_dist, axis_count);
+    find_closest_nd(close, point, best_node, best_dist, axis_count);
 
     if (diff * diff < best_dist) {
-        find_closest_nd(away, point, best, best_dist, axis_count);
+        find_closest_nd(away, point, best_node, best_dist, axis_count);
     }
 }
 
@@ -305,10 +326,10 @@ std::vector<double> KDTree::closest_point(const std::vector<double>& point) cons
         auto res = closest_point_2d(point[0], point[1]);
         return {res.first, res.second};
     }
-    std::vector<double> best;
+    int best_node = -1;
     double best_dist = std::numeric_limits<double>::max();
-    find_closest_nd(root, point, best, best_dist, dimensions);
-    return best;
+    find_closest_nd(root, point, best_node, best_dist, dimensions);
+    return nodes_nd[best_node].point;
 }
 
 void KDTree::closest_point_per_quadrant_2d_raw(

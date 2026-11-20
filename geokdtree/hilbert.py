@@ -46,28 +46,7 @@ def _positive(value, name):
     return value
 
 
-def hilbert_index(coordinates, *, bits):
-    """
-    Function:
-
-    - Encode an integer grid coordinate into a 1D Hilbert index using Skilling's transform.
-
-    Required Arguments:
-
-    - `coordinates`
-        - Type: tuple or list of ints
-        - What: Nonempty integer grid coordinates, each axis in [0, 2**bits)
-
-    Required Keyword Arguments:
-
-    - `bits`
-        - Type: int
-        - What: Number of bits per dimension
-
-    Returns:
-
-    - The integer Hilbert curve index.
-    """
+def _validate_hilbert_index(coordinates, bits):
     bits = _positive(bits, "bits")
     x = list(coordinates)
     if not x:
@@ -78,6 +57,10 @@ def hilbert_index(coordinates, *, bits):
         x[i] = integer_index(value)
         if not 0 <= x[i] < (1 << bits):
             raise ValueError("coordinate outside integer grid")
+    return x, bits
+
+
+def _hilbert_index_compute(x, bits):
     n = len(x)
     if n == 1:
         return x[0]
@@ -108,6 +91,70 @@ def hilbert_index(coordinates, *, bits):
     return result
 
 
+def hilbert_index(coordinates, *, bits):
+    """
+    Function:
+
+    - Encode an integer grid coordinate into a 1D Hilbert index using Skilling's transform.
+
+    Required Arguments:
+
+    - `coordinates`
+        - Type: tuple or list of ints
+        - What: Nonempty integer grid coordinates, each axis in [0, 2**bits)
+
+    Required Keyword Arguments:
+
+    - `bits`
+        - Type: int
+        - What: Number of bits per dimension
+
+    Returns:
+
+    - The integer Hilbert curve index.
+    """
+    x, bits = _validate_hilbert_index(coordinates, bits)
+    return _hilbert_index_compute(x, bits)
+
+
+def _validate_hilbert_coordinates(index, dimensions, bits):
+    bits = _positive(bits, "bits")
+    dimensions = _positive(dimensions, "dimensions")
+    if isinstance(index, bool):
+        raise TypeError("index must be an integer")
+    index = integer_index(index)
+    if not 0 <= index < (1 << (dimensions * bits)):
+        raise ValueError("index outside Hilbert grid")
+    return index, dimensions, bits
+
+
+def _hilbert_coordinates_compute(index, dimensions, bits):
+    if dimensions == 1:
+        return (index,)
+    x = [0] * dimensions
+    for bit in range(bits):
+        for axis in range(dimensions):
+            x[axis] |= (
+                (index >> (bit * dimensions + dimensions - 1 - axis)) & 1
+            ) << bit
+    t = x[-1] >> 1
+    for i in range(dimensions - 1, 0, -1):
+        x[i] ^= x[i - 1]
+    x[0] ^= t
+    q = 2
+    while q < (1 << bits):
+        p = q - 1
+        for i in range(dimensions - 1, -1, -1):
+            if x[i] & q:
+                x[0] ^= p
+            else:
+                t = (x[0] ^ x[i]) & p
+                x[0] ^= t
+                x[i] ^= t
+        q <<= 1
+    return tuple(x)
+
+
 def hilbert_coordinates(index, *, dimensions, bits):
     """
     Function:
@@ -133,37 +180,10 @@ def hilbert_coordinates(index, *, dimensions, bits):
 
     - A tuple of integer grid coordinates corresponding to the Hilbert index.
     """
-    bits = _positive(bits, "bits")
-    dimensions = _positive(dimensions, "dimensions")
-    if isinstance(index, bool):
-        raise TypeError("index must be an integer")
-    index = integer_index(index)
-    if not 0 <= index < (1 << (dimensions * bits)):
-        raise ValueError("index outside Hilbert grid")
-    if dimensions == 1:
-        return (index,)
-    x = [0] * dimensions
-    for bit in range(bits):
-        for axis in range(dimensions):
-            x[axis] |= (
-                (index >> (bit * dimensions + dimensions - 1 - axis)) & 1
-            ) << bit
-    t = x[-1] >> 1
-    for i in range(dimensions - 1, 0, -1):
-        x[i] ^= x[i - 1]
-    x[0] ^= t
-    q = 2
-    while q < (1 << bits):
-        p = q - 1
-        for i in range(dimensions - 1, -1, -1):
-            if x[i] & q:
-                x[0] ^= p
-            else:
-                t = (x[0] ^ x[i]) & p
-                x[0] ^= t
-                x[i] ^= t
-        q <<= 1
-    return tuple(x)
+    index, dimensions, bits = _validate_hilbert_coordinates(
+        index, dimensions, bits
+    )
+    return _hilbert_coordinates_compute(index, dimensions, bits)
 
 
 def _points(points, dimensions=None):
