@@ -87,12 +87,14 @@ namespace kdtree_helpers {
 inline double squared_distance_raw(
     const double* p1,
     const double* p2,
-    int axis_count
+    int axis_count,
+    double cutoff = std::numeric_limits<double>::max()
 ) {
     double sum = 0.0;
     for (int i = 0; i < axis_count; ++i) {
         double diff = p1[i] - p2[i];
         sum += diff * diff;
+        if (sum >= cutoff) return sum;
     }
     return sum;
 }

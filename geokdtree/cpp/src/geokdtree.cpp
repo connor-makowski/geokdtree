@@ -74,23 +74,25 @@ inline double get_max_active_dist(int mask, const double dists[4]) {
     return max_d;
 }
 
-inline void update_quadrant_candidates(
+inline bool update_quadrant_candidates(
     int node_idx, double dist, int active_mask,
     bool is_north, bool is_south, bool is_east, bool is_west,
     int best_indices[4], double best_dists[4]
 ) {
+    bool updated = false;
     if (is_north && is_east && (active_mask & 1) && dist < best_dists[0]) {
-        best_indices[0] = node_idx; best_dists[0] = dist;
+        best_indices[0] = node_idx; best_dists[0] = dist; updated = true;
     }
     if (is_north && is_west && (active_mask & 2) && dist < best_dists[1]) {
-        best_indices[1] = node_idx; best_dists[1] = dist;
+        best_indices[1] = node_idx; best_dists[1] = dist; updated = true;
     }
     if (is_south && is_east && (active_mask & 4) && dist < best_dists[2]) {
-        best_indices[2] = node_idx; best_dists[2] = dist;
+        best_indices[2] = node_idx; best_dists[2] = dist; updated = true;
     }
     if (is_south && is_west && (active_mask & 8) && dist < best_dists[3]) {
-        best_indices[3] = node_idx; best_dists[3] = dist;
+        best_indices[3] = node_idx; best_dists[3] = dist; updated = true;
     }
+    return updated;
 }
 
 template <typename T, typename F>
@@ -330,7 +332,7 @@ void KDTree::find_closest_nd(
     const auto& node = nodes_ptr[node_idx];
     const double* node_data = coords_ptr + node.coord_offset;
     double node_dist =
-        kdtree_helpers::squared_distance_raw(query, node_data, axis_count);
+        kdtree_helpers::squared_distance_raw(query, node_data, axis_count, best_dist);
 
     if (best_node < 0 || node_dist < best_dist) {
         best_node = node_idx;
@@ -453,15 +455,17 @@ void KDTree::find_closest_point_per_quadrant_2d(
     double dy = py - node.y;
     double dist = dx * dx + dy * dy;
     if (dist < max_active_d) {
-        kdtree_helpers::update_quadrant_candidates(
-            node_idx, dist, active_mask,
-            node.y >= py, node.y <= py, node.x >= px, node.x <= px,
-            best_indices, best_dists
-        );
+        if (kdtree_helpers::update_quadrant_candidates(
+                node_idx, dist, active_mask,
+                node.y >= py, node.y <= py, node.x >= px, node.x <= px,
+                best_indices, best_dists
+            )) {
+            max_active_d = kdtree_helpers::get_max_active_dist(active_mask, best_dists);
+        }
     }
 
     int axis = node.axis;
-    double diff = (axis == 0 ? px - node.x : py - node.y);
+    double diff = (axis == 0 ? dx : dy);
     int close = (diff < 0) ? node.left : node.right;
     int away = (diff < 0) ? node.right : node.left;
     int away_mask = (axis == 0)
@@ -891,14 +895,15 @@ void GeoKDTree::find_closest_point_per_quadrant_3d(
             double d_lon = pt->lon - q_lon;
             if (d_lon > 180.0) d_lon -= 360.0;
             else if (d_lon < -180.0) d_lon += 360.0;
-            kdtree_helpers::update_quadrant_candidates(
+            if (kdtree_helpers::update_quadrant_candidates(
                 pt->idx, dist, active_mask,
                 pt->lat >= q_lat, pt->lat <= q_lat,
                 (d_lon >= 0.0 || d_lon == -180.0),
                 (d_lon <= 0.0 || d_lon == 180.0),
                 best_indices, best_dists
-            );
-            max_active_d = kdtree_helpers::get_max_active_dist(active_mask, best_dists);
+            )) {
+                max_active_d = kdtree_helpers::get_max_active_dist(active_mask, best_dists);
+            }
         }
         return;
     }
@@ -909,19 +914,18 @@ void GeoKDTree::find_closest_point_per_quadrant_3d(
         double d_lon = node.lon - q_lon;
         if (d_lon > 180.0) d_lon -= 360.0;
         else if (d_lon < -180.0) d_lon += 360.0;
-        kdtree_helpers::update_quadrant_candidates(
-            node.idx, dist, active_mask,
-            node.lat >= q_lat, node.lat <= q_lat,
-            (d_lon >= 0.0 || d_lon == -180.0), (d_lon <= 0.0 || d_lon == 180.0),
-            best_indices, best_dists
-        );
-        max_active_d = kdtree_helpers::get_max_active_dist(active_mask, best_dists);
+        if (kdtree_helpers::update_quadrant_candidates(
+                node.idx, dist, active_mask,
+                node.lat >= q_lat, node.lat <= q_lat,
+                (d_lon >= 0.0 || d_lon == -180.0), (d_lon <= 0.0 || d_lon == 180.0),
+                best_indices, best_dists
+            )) {
+            max_active_d = kdtree_helpers::get_max_active_dist(active_mask, best_dists);
+        }
     }
 
     int axis = node.axis;
-    double q_val = (axis == 0) ? qx : ((axis == 1) ? qy : qz);
-    double n_val = (axis == 0) ? node.x : ((axis == 1) ? node.y : node.z);
-    double diff = q_val - n_val;
+    double diff = (axis == 0) ? dx : ((axis == 1) ? dy : dz);
     int close = (diff < 0) ? node.left : node.right;
     int away = (diff < 0) ? node.right : node.left;
     int away_mask = (axis == 2) ? (active_mask & (diff < 0 ? (1 | 2) : (4 | 8))) : active_mask;
