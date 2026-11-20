@@ -116,7 +116,7 @@ inline bool extract_geo_points(
             if (GEOKDTREE_LIKELY(extract_double(p0, lat) && extract_double(p1, lon))) {
                 double lat_rad = lat * DEG_TO_RAD, lon_rad = lon * DEG_TO_RAD;
                 double cos_lat = std::cos(lat_rad);
-                pts[i] = {cos_lat * std::cos(lon_rad), cos_lat * std::sin(lon_rad), std::sin(lat_rad), static_cast<int>(i)};
+                pts[i] = {cos_lat * std::cos(lon_rad), cos_lat * std::sin(lon_rad), std::sin(lat_rad), lat, lon, static_cast<int>(i)};
                 orig[i] = {lat, lon};
                 continue;
             }
@@ -126,7 +126,7 @@ inline bool extract_geo_points(
             if (GEOKDTREE_LIKELY(extract_double(p0, lat) && extract_double(p1, lon))) {
                 double lat_rad = lat * DEG_TO_RAD, lon_rad = lon * DEG_TO_RAD;
                 double cos_lat = std::cos(lat_rad);
-                pts[i] = {cos_lat * std::cos(lon_rad), cos_lat * std::sin(lon_rad), std::sin(lat_rad), static_cast<int>(i)};
+                pts[i] = {cos_lat * std::cos(lon_rad), cos_lat * std::sin(lon_rad), std::sin(lat_rad), lat, lon, static_cast<int>(i)};
                 orig[i] = {lat, lon};
                 continue;
             }
@@ -137,7 +137,7 @@ inline bool extract_geo_points(
             lon = p.second;
             double lat_rad = lat * DEG_TO_RAD, lon_rad = lon * DEG_TO_RAD;
             double cos_lat = std::cos(lat_rad);
-            pts[i] = {cos_lat * std::cos(lon_rad), cos_lat * std::sin(lon_rad), std::sin(lat_rad), static_cast<int>(i)};
+            pts[i] = {cos_lat * std::cos(lon_rad), cos_lat * std::sin(lon_rad), std::sin(lat_rad), lat, lon, static_cast<int>(i)};
             orig[i] = {lat, lon};
         } catch (const nb::python_error&) {
             throw;

@@ -52,19 +52,23 @@ struct KDNodeND {
     KDNodeND() = default;
 };
 
-// Internal point for GeoKDTree building and leaf storage (compact 32-byte layout)
+// Internal point for GeoKDTree building and leaf storage
 struct GeoPointInternal {
     double x = 0.0;
     double y = 0.0;
     double z = 0.0;
+    double lat = 0.0;
+    double lon = 0.0;
     int idx = 0;
 };
 
-// Geo KD-Tree node structure (flat arena, inline AABB, 3D coordinates & index)
+// Geo KD-Tree node structure (flat arena, inline AABB, lat/lon & coordinates)
 struct GeoKDNode {
     double x = 0.0;
     double y = 0.0;
     double z = 0.0;
+    double lat = 0.0;
+    double lon = 0.0;
     int idx = 0;
     int axis = 0;
     double min_x = 0.0, max_x = 0.0;
