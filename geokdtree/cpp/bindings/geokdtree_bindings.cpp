@@ -846,9 +846,7 @@ NB_MODULE(cpp, m) {
             std::vector<int> out(n);
             {
                 nb::gil_scoped_release release;
-                for (size_t i = 0; i < n; ++i) {
-                    out[i] = self.closest_idx(points[i]);
-                }
+                self.closest_indices_batch(points, out.data());
             }
             PyObject* list_obj = PyList_New(n);
             if (!list_obj) throw nb::python_error();
@@ -975,9 +973,7 @@ NB_MODULE(cpp, m) {
         std::vector<size_t> out(n);
         {
             nb::gil_scoped_release release;
-            for (size_t i = 0; i < n; ++i) {
-                out[i] = self.closest_idx(points[i].first, points[i].second);
-            }
+            self.closest_indices_batch(points, out.data());
         }
         PyObject* list_obj = PyList_New(n);
         if (!list_obj) throw nb::python_error();
@@ -1000,9 +996,7 @@ NB_MODULE(cpp, m) {
         std::vector<std::pair<double, double>> out(n);
         {
             nb::gil_scoped_release release;
-            for (size_t i = 0; i < n; ++i) {
-                out[i] = self.closest_point(points[i].first, points[i].second);
-            }
+            self.closest_points_batch(points, out.data());
         }
         PyObject* list_obj = PyList_New(n);
         if (!list_obj) throw nb::python_error();

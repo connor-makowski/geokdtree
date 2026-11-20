@@ -258,24 +258,7 @@ public:
 
     std::vector<size_t> hilbert_order() const { return order; }
 
-    int closest_idx(const std::vector<double>& query) const {
-        if (points.empty()) {
-            throw std::invalid_argument("tree is empty");
-        }
-        if (static_cast<int>(query.size()) != dimensions) {
-            throw std::invalid_argument("query dimensions must match tree dimensions");
-        }
-        for (double v : query) {
-            if (!std::isfinite(v)) {
-                throw std::invalid_argument("query coordinates must be finite");
-            }
-        }
-        uint64_t q_coords[16];
-        for (int d = 0; d < dimensions; ++d) {
-            q_coords[d] = hilbert_helpers::quantize_axis(query[d], bounds[d].first, bounds[d].second, bits, true, true);
-        }
-        uint64_t q_key = hilbert_helpers::index_fast(q_coords, dimensions, bits);
-
+    inline int closest_idx_from_query(const double* query, uint64_t q_key) const noexcept {
         size_t n = sorted_keys.size();
         size_t range_start = 0;
         size_t range_end = n;
@@ -304,7 +287,7 @@ public:
         }
 
         size_t best_pos = positions[0];
-        uint64_t best_h_dist = sorted_keys[best_pos] > q_key ? sorted_keys[best_pos] - q_key : q_key - sorted_keys[best_pos];
+        uint64_t best_h_dist = sorted_keys[best_pos] >= q_key ? sorted_keys[best_pos] - q_key : q_key - sorted_keys[best_pos];
         double best_e_dist = 0.0;
         const double* pt0 = &sorted_coords_flat[best_pos * dimensions];
         for (int d = 0; d < dimensions; ++d) {
@@ -316,7 +299,7 @@ public:
         for (size_t p_i = 1; p_i < pos_count; ++p_i) {
             size_t c_pos = positions[p_i];
             uint64_t c_key = sorted_keys[c_pos];
-            uint64_t c_h_dist = c_key > q_key ? c_key - q_key : q_key - c_key;
+            uint64_t c_h_dist = c_key >= q_key ? c_key - q_key : q_key - c_key;
             int c_idx = sorted_indices[c_pos];
             const double* cpt = &sorted_coords_flat[c_pos * dimensions];
             double c_e_dist = 0.0;
@@ -328,13 +311,48 @@ public:
             if (c_h_dist < best_h_dist ||
                 (c_h_dist == best_h_dist && (c_e_dist < best_e_dist ||
                 (c_e_dist == best_e_dist && c_idx < best_idx)))) {
-                best_pos = c_pos;
                 best_h_dist = c_h_dist;
                 best_e_dist = c_e_dist;
                 best_idx = c_idx;
             }
         }
         return best_idx;
+    }
+
+    int closest_idx(const std::vector<double>& query) const {
+        if (points.empty()) {
+            throw std::invalid_argument("tree is empty");
+        }
+        if (static_cast<int>(query.size()) != dimensions) {
+            throw std::invalid_argument("query dimensions must match tree dimensions");
+        }
+        for (double v : query) {
+            if (!std::isfinite(v)) {
+                throw std::invalid_argument("query coordinates must be finite");
+            }
+        }
+        uint64_t q_coords[16];
+        for (int d = 0; d < dimensions; ++d) {
+            q_coords[d] = hilbert_helpers::quantize_axis(query[d], bounds[d].first, bounds[d].second, bits, true, true);
+        }
+        uint64_t q_key = hilbert_helpers::index_fast(q_coords, dimensions, bits);
+        return closest_idx_from_query(query.data(), q_key);
+    }
+
+    void closest_indices_batch(
+        const std::vector<std::vector<double>>& queries,
+        int* out_indices
+    ) const {
+        if (points.empty()) throw std::invalid_argument("tree is empty");
+        const size_t n = queries.size();
+        for (size_t i = 0; i < n; ++i) {
+            uint64_t q_coords[16];
+            for (int d = 0; d < dimensions; ++d) {
+                q_coords[d] = hilbert_helpers::quantize_axis(queries[i][d], bounds[d].first, bounds[d].second, bits, true, true);
+            }
+            uint64_t q_key = hilbert_helpers::index_fast(q_coords, dimensions, bits);
+            out_indices[i] = closest_idx_from_query(queries[i].data(), q_key);
+        }
     }
 
     std::vector<double> closest_point(const std::vector<double>& query) const {
@@ -447,6 +465,72 @@ public:
 
     std::vector<size_t> hilbert_order() const { return order; }
 
+    inline int closest_idx_from_xyz_key(
+        double qx, double qy, double qz, uint64_t q_key
+    ) const noexcept {
+        size_t n = sorted_keys.size();
+        size_t range_start = 0;
+        size_t range_end = n;
+        if (!bucket_offsets.empty()) {
+            size_t b = q_key >> shift_bits;
+            range_start = bucket_offsets[b];
+            range_end = bucket_offsets[b + 1];
+        }
+
+        auto it = std::lower_bound(
+            sorted_keys.begin() + range_start,
+            sorted_keys.begin() + range_end,
+            q_key
+        );
+        size_t pos = std::distance(sorted_keys.begin(), it);
+
+        size_t positions[16];
+        size_t pos_count = 0;
+        int left = static_cast<int>(pos) - 1;
+        while (left >= 0 && pos_count < 8) {
+            positions[pos_count++] = static_cast<size_t>(left);
+            if (left == 0 || sorted_keys[left - 1] != sorted_keys[left]) break;
+            --left;
+        }
+        int right = static_cast<int>(pos);
+        while (right < static_cast<int>(n) && pos_count < 16) {
+            positions[pos_count++] = static_cast<size_t>(right);
+            if (right == static_cast<int>(n) - 1 ||
+                sorted_keys[right + 1] != sorted_keys[right])
+                break;
+            ++right;
+        }
+
+        size_t best_pos = positions[0];
+        uint64_t best_h_dist = sorted_keys[best_pos] >= q_key
+            ? sorted_keys[best_pos] - q_key
+            : q_key - sorted_keys[best_pos];
+        const auto& e0 = sorted_entries[best_pos];
+        double best_e_dist = (e0.x - qx) * (e0.x - qx) +
+            (e0.y - qy) * (e0.y - qy) + (e0.z - qz) * (e0.z - qz);
+        int best_idx = e0.idx;
+
+        for (size_t p_i = 1; p_i < pos_count; ++p_i) {
+            size_t c_pos = positions[p_i];
+            uint64_t c_key = sorted_keys[c_pos];
+            uint64_t c_h_dist = c_key >= q_key ? c_key - q_key : q_key - c_key;
+            const auto& e = sorted_entries[c_pos];
+            double c_e_dist = (e.x - qx) * (e.x - qx) +
+                (e.y - qy) * (e.y - qy) + (e.z - qz) * (e.z - qz);
+            int c_idx = e.idx;
+
+            if (c_h_dist < best_h_dist ||
+                (c_h_dist == best_h_dist &&
+                 (c_e_dist < best_e_dist ||
+                  (c_e_dist == best_e_dist && c_idx < best_idx)))) {
+                best_h_dist = c_h_dist;
+                best_e_dist = c_e_dist;
+                best_idx = c_idx;
+            }
+        }
+        return best_idx;
+    }
+
     int closest_idx(double lat, double lon) const {
         if (original_points.empty()) {
             throw std::invalid_argument("tree is empty");
@@ -467,58 +551,62 @@ public:
         uint64_t q1 = hilbert_helpers::quantize_geo_fast(qy, bits);
         uint64_t q2 = hilbert_helpers::quantize_geo_fast(qz, bits);
         uint64_t q_key = hilbert_helpers::index_3d_fast(q0, q1, q2, bits);
+        return closest_idx_from_xyz_key(qx, qy, qz, q_key);
+    }
 
-        size_t n = sorted_keys.size();
-        size_t range_start = 0;
-        size_t range_end = n;
-        if (!bucket_offsets.empty()) {
-            size_t b = q_key >> shift_bits;
-            range_start = bucket_offsets[b];
-            range_end = bucket_offsets[b + 1];
-        }
+    void closest_indices_batch(
+        const std::vector<std::pair<double, double>>& queries,
+        size_t* out_indices
+    ) const {
+        if (original_points.empty()) throw std::invalid_argument("tree is empty");
+        constexpr double PI = 3.14159265358979323846;
+        constexpr double DEG_TO_RAD = PI / 180.0;
+        const size_t n = queries.size();
+        constexpr size_t BATCH_CHUNK = 1024;
+        struct QueryInfo {
+            double qx, qy, qz;
+            uint64_t q_key;
+        };
+        QueryInfo chunk[BATCH_CHUNK];
 
-        auto it = std::lower_bound(sorted_keys.begin() + range_start, sorted_keys.begin() + range_end, q_key);
-        size_t pos = std::distance(sorted_keys.begin(), it);
+        for (size_t chunk_start = 0; chunk_start < n; chunk_start += BATCH_CHUNK) {
+            const size_t chunk_end = std::min(chunk_start + BATCH_CHUNK, n);
+            const size_t chunk_len = chunk_end - chunk_start;
 
-        size_t positions[16];
-        size_t pos_count = 0;
-        int left = static_cast<int>(pos) - 1;
-        while (left >= 0 && pos_count < 8) {
-            positions[pos_count++] = static_cast<size_t>(left);
-            if (left == 0 || sorted_keys[left - 1] != sorted_keys[left]) break;
-            --left;
-        }
-        int right = static_cast<int>(pos);
-        while (right < static_cast<int>(n) && pos_count < 16) {
-            positions[pos_count++] = static_cast<size_t>(right);
-            if (right == static_cast<int>(n) - 1 || sorted_keys[right + 1] != sorted_keys[right]) break;
-            ++right;
-        }
+            for (size_t j = 0; j < chunk_len; ++j) {
+                const auto& q = queries[chunk_start + j];
+                double lat_rad = q.first * DEG_TO_RAD;
+                double lon_rad = q.second * DEG_TO_RAD;
+                double cos_lat = std::cos(lat_rad);
+                double qx = cos_lat * std::cos(lon_rad);
+                double qy = cos_lat * std::sin(lon_rad);
+                double qz = std::sin(lat_rad);
+                uint64_t q0 = hilbert_helpers::quantize_geo_fast(qx, bits);
+                uint64_t q1 = hilbert_helpers::quantize_geo_fast(qy, bits);
+                uint64_t q2 = hilbert_helpers::quantize_geo_fast(qz, bits);
+                uint64_t q_key = hilbert_helpers::index_3d_fast(q0, q1, q2, bits);
+                chunk[j] = {qx, qy, qz, q_key};
+            }
 
-        size_t best_pos = positions[0];
-        uint64_t best_h_dist = sorted_keys[best_pos] > q_key ? sorted_keys[best_pos] - q_key : q_key - sorted_keys[best_pos];
-        const auto& e0 = sorted_entries[best_pos];
-        double best_e_dist = (e0.x - qx)*(e0.x - qx) + (e0.y - qy)*(e0.y - qy) + (e0.z - qz)*(e0.z - qz);
-        int best_idx = e0.idx;
-
-        for (size_t p_i = 1; p_i < pos_count; ++p_i) {
-            size_t c_pos = positions[p_i];
-            uint64_t c_key = sorted_keys[c_pos];
-            uint64_t c_h_dist = c_key > q_key ? c_key - q_key : q_key - c_key;
-            const auto& e = sorted_entries[c_pos];
-            double c_e_dist = (e.x - qx)*(e.x - qx) + (e.y - qy)*(e.y - qy) + (e.z - qz)*(e.z - qz);
-            int c_idx = e.idx;
-
-            if (c_h_dist < best_h_dist ||
-                (c_h_dist == best_h_dist && (c_e_dist < best_e_dist ||
-                (c_e_dist == best_e_dist && c_idx < best_idx)))) {
-                best_pos = c_pos;
-                best_h_dist = c_h_dist;
-                best_e_dist = c_e_dist;
-                best_idx = c_idx;
+            for (size_t j = 0; j < chunk_len; ++j) {
+                out_indices[chunk_start + j] = static_cast<size_t>(closest_idx_from_xyz_key(
+                    chunk[j].qx, chunk[j].qy, chunk[j].qz, chunk[j].q_key
+                ));
             }
         }
-        return best_idx;
+    }
+
+    void closest_points_batch(
+        const std::vector<std::pair<double, double>>& queries,
+        std::pair<double, double>* out_points
+    ) const {
+        if (original_points.empty()) throw std::invalid_argument("tree is empty");
+        const size_t n = queries.size();
+        std::vector<size_t> indices(n);
+        closest_indices_batch(queries, indices.data());
+        for (size_t i = 0; i < n; ++i) {
+            out_points[i] = original_points[indices[i]];
+        }
     }
 
     std::pair<double, double> closest_point(double lat, double lon) const {
