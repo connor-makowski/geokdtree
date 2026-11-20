@@ -205,30 +205,34 @@ public:
 
         if (!points.empty()) {
             size_t n = points.size();
-            keys.resize(n);
+            std::vector<std::pair<uint64_t, uint32_t>> key_idx(n);
             std::vector<uint64_t> coords(dimensions);
             for (size_t i = 0; i < n; ++i) {
                 for (int d = 0; d < dimensions; ++d) {
                     coords[d] = hilbert_helpers::quantize_axis(points[i][d], bounds[d].first, bounds[d].second, bits, false);
                 }
-                keys[i] = hilbert_helpers::index_fast(coords.data(), dimensions, bits);
+                key_idx[i] = {
+                    hilbert_helpers::index_fast(coords.data(), dimensions, bits),
+                    static_cast<uint32_t>(i)
+                };
             }
 
-            order.resize(n);
-            for (size_t i = 0; i < n; ++i) order[i] = i;
-            std::stable_sort(order.begin(), order.end(), [this](size_t a, size_t b) {
-                return keys[a] < keys[b];
+            std::stable_sort(key_idx.begin(), key_idx.end(), [](const auto& a, const auto& b) {
+                return a.first < b.first;
             });
 
+            order.resize(n);
             sorted_keys.resize(n);
             sorted_coords_flat.resize(n * dimensions);
             sorted_indices.resize(n);
             for (size_t i = 0; i < n; ++i) {
-                size_t orig_idx = order[i];
-                sorted_keys[i] = keys[orig_idx];
+                uint32_t orig_idx = key_idx[i].second;
+                order[i] = orig_idx;
+                sorted_keys[i] = key_idx[i].first;
                 sorted_indices[i] = static_cast<int>(orig_idx);
+                const auto& pt = points[orig_idx];
                 for (int d = 0; d < dimensions; ++d) {
-                    sorted_coords_flat[i * dimensions + d] = points[orig_idx][d];
+                    sorted_coords_flat[i * dimensions + d] = pt[d];
                 }
             }
 
@@ -369,7 +373,13 @@ public:
         hilbert_helpers::validate(3, bits);
 
         size_t n = original_points.size();
-        std::vector<uint64_t> keys(n);
+        struct TempGeoEntry {
+            double x;
+            double y;
+            double z;
+        };
+        std::vector<TempGeoEntry> raw_entries(n);
+        std::vector<std::pair<uint64_t, uint32_t>> key_idx(n);
 
         constexpr double PI = 3.14159265358979323846;
         constexpr double DEG_TO_RAD = PI / 180.0;
@@ -386,33 +396,33 @@ public:
             double x = cos_lat * std::cos(lon_rad);
             double y = cos_lat * std::sin(lon_rad);
             double z = std::sin(lat_rad);
+            raw_entries[i] = {x, y, z};
 
             uint64_t q0 = hilbert_helpers::quantize_geo_fast(x, bits);
             uint64_t q1 = hilbert_helpers::quantize_geo_fast(y, bits);
             uint64_t q2 = hilbert_helpers::quantize_geo_fast(z, bits);
-            keys[i] = hilbert_helpers::index_3d_fast(q0, q1, q2, bits);
+            key_idx[i] = {
+                hilbert_helpers::index_3d_fast(q0, q1, q2, bits),
+                static_cast<uint32_t>(i)
+            };
         }
 
-        order.resize(n);
-        for (size_t i = 0; i < n; ++i) order[i] = i;
-        std::stable_sort(order.begin(), order.end(), [&keys](size_t a, size_t b) {
-            return keys[a] < keys[b];
+        std::stable_sort(key_idx.begin(), key_idx.end(), [](const auto& a, const auto& b) {
+            return a.first < b.first;
         });
 
+        order.resize(n);
         sorted_keys.resize(n);
         sorted_entries.resize(n);
         for (size_t i = 0; i < n; ++i) {
-            size_t orig_idx = order[i];
-            sorted_keys[i] = keys[orig_idx];
-            double lat = original_points[orig_idx].first;
-            double lon = original_points[orig_idx].second;
-            double lat_rad = lat * DEG_TO_RAD;
-            double lon_rad = lon * DEG_TO_RAD;
-            double cos_lat = std::cos(lat_rad);
+            uint32_t orig_idx = key_idx[i].second;
+            order[i] = orig_idx;
+            sorted_keys[i] = key_idx[i].first;
+            const auto& r = raw_entries[orig_idx];
             sorted_entries[i] = {
-                cos_lat * std::cos(lon_rad),
-                cos_lat * std::sin(lon_rad),
-                std::sin(lat_rad),
+                r.x,
+                r.y,
+                r.z,
                 static_cast<int>(orig_idx)
             };
         }
