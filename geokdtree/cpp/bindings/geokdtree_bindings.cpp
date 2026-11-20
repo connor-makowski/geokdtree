@@ -577,10 +577,13 @@ NB_MODULE(cpp, m) {
             if (self.get_dimensions() == 2) {
                 auto points = validate_points_2d(points_handle);
                 const size_t n = points.size();
+                std::vector<std::pair<double, double>> out(n);
+                {
+                    nb::gil_scoped_release release;
+                    self.closest_points_2d_batch(points, out.data());
+                }
                 PyObject* list_obj = PyList_New(n);
                 if (!list_obj) throw nb::python_error();
-                std::vector<std::pair<double, double>> out(n);
-                self.closest_points_2d_batch(points, out.data());
                 for (size_t i = 0; i < n; ++i) {
                     PyObject* t = PyTuple_New(2);
                     if (!t) {
@@ -596,17 +599,24 @@ NB_MODULE(cpp, m) {
             auto points = validate_points(points_handle, self.get_dimensions());
             const size_t n = points.size();
             const Py_ssize_t dims = self.get_dimensions();
+            std::vector<std::vector<double>> out(n);
+            {
+                nb::gil_scoped_release release;
+                for (size_t i = 0; i < n; ++i) {
+                    const double* res = self.closest_point_data(points[i].data());
+                    out[i].assign(res, res + dims);
+                }
+            }
             PyObject* list_obj = PyList_New(n);
             if (!list_obj) throw nb::python_error();
             for (size_t i = 0; i < n; ++i) {
-                const double* res = self.closest_point_data(points[i].data());
                 PyObject* t = PyTuple_New(dims);
                 if (!t) {
                     Py_DECREF(list_obj);
                     throw nb::python_error();
                 }
                 for (Py_ssize_t j = 0; j < dims; ++j) {
-                    PyObject* val = PyFloat_FromDouble(res[j]);
+                    PyObject* val = PyFloat_FromDouble(out[i][j]);
                     if (!val) {
                         Py_DECREF(t);
                         Py_DECREF(list_obj);
@@ -671,10 +681,13 @@ NB_MODULE(cpp, m) {
         .def("closest_indices", [](const GeoKDTree& self, nb::handle points_handle) {
             auto points = validate_points_2d(points_handle);
             const size_t n = points.size();
+            std::vector<int> out(n);
+            {
+                nb::gil_scoped_release release;
+                self.closest_indices_batch(points, out.data());
+            }
             PyObject* list_obj = PyList_New(n);
             if (!list_obj) throw nb::python_error();
-            std::vector<int> out(n);
-            self.closest_indices_batch(points, out.data());
             for (size_t i = 0; i < n; ++i) {
                 PyObject* val = PyLong_FromLong(out[i]);
                 if (!val) {
@@ -688,10 +701,13 @@ NB_MODULE(cpp, m) {
         .def("closest_indicies", [](const GeoKDTree& self, nb::handle points_handle) {
             auto points = validate_points_2d(points_handle);
             const size_t n = points.size();
+            std::vector<int> out(n);
+            {
+                nb::gil_scoped_release release;
+                self.closest_indices_batch(points, out.data());
+            }
             PyObject* list_obj = PyList_New(n);
             if (!list_obj) throw nb::python_error();
-            std::vector<int> out(n);
-            self.closest_indices_batch(points, out.data());
             for (size_t i = 0; i < n; ++i) {
                 PyObject* val = PyLong_FromLong(out[i]);
                 if (!val) {
@@ -705,10 +721,13 @@ NB_MODULE(cpp, m) {
         .def("closest_points", [](const GeoKDTree& self, nb::handle points_handle) {
             auto points = validate_points_2d(points_handle);
             const size_t n = points.size();
+            std::vector<std::pair<double, double>> out(n);
+            {
+                nb::gil_scoped_release release;
+                self.closest_points_batch(points, out.data());
+            }
             PyObject* list_obj = PyList_New(n);
             if (!list_obj) throw nb::python_error();
-            std::vector<std::pair<double, double>> out(n);
-            self.closest_points_batch(points, out.data());
             for (size_t i = 0; i < n; ++i) {
                 PyObject* t = PyTuple_New(2);
                 if (!t) {
@@ -819,7 +838,67 @@ NB_MODULE(cpp, m) {
         return module.attr("_hilbert_coordinates_compute")(index_obj, dims_obj, bits_obj);
     }, nb::arg("index"), nb::kw_only(), nb::arg("dimensions"), nb::arg("bits"));
 
-    nb::class_<NativeHilbert>(m, "Hilbert")
+        auto hilbert_closest_indices = [](const NativeHilbert& self, nb::handle points_handle) {
+            auto points = validate_points(points_handle, self.dimensions);
+            if (points.empty()) return nb::list();
+            if (self.size() == 0) throw std::invalid_argument("tree is empty");
+            const size_t n = points.size();
+            std::vector<int> out(n);
+            {
+                nb::gil_scoped_release release;
+                for (size_t i = 0; i < n; ++i) {
+                    out[i] = self.closest_idx(points[i]);
+                }
+            }
+            PyObject* list_obj = PyList_New(n);
+            if (!list_obj) throw nb::python_error();
+            for (size_t i = 0; i < n; ++i) {
+                PyObject* val = PyLong_FromLong(out[i]);
+                if (!val) {
+                    Py_DECREF(list_obj);
+                    throw nb::python_error();
+                }
+                PyList_SET_ITEM(list_obj, i, val);
+            }
+            return nb::steal<nb::list>(list_obj);
+        };
+
+        auto hilbert_closest_points = [](const NativeHilbert& self, nb::handle points_handle) {
+            auto points = validate_points(points_handle, self.dimensions);
+            if (points.empty()) return nb::list();
+            if (self.size() == 0) throw std::invalid_argument("tree is empty");
+            const size_t n = points.size();
+            const size_t dims = self.dimensions;
+            std::vector<std::vector<double>> out(n);
+            {
+                nb::gil_scoped_release release;
+                for (size_t i = 0; i < n; ++i) {
+                    out[i] = self.closest_point(points[i]);
+                }
+            }
+            PyObject* list_obj = PyList_New(n);
+            if (!list_obj) throw nb::python_error();
+            for (size_t i = 0; i < n; ++i) {
+                PyObject* t = PyTuple_New(dims);
+                if (!t) {
+                    Py_DECREF(list_obj);
+                    throw nb::python_error();
+                }
+                for (size_t j = 0; j < dims; ++j) {
+                    PyObject* val = PyFloat_FromDouble(out[i][j]);
+                    if (!val) {
+                        Py_DECREF(t);
+                        Py_DECREF(list_obj);
+                        throw nb::python_error();
+                    }
+                    PyTuple_SET_ITEM(t, j, val);
+                }
+                PyList_SET_ITEM(list_obj, i, t);
+            }
+            return nb::steal<nb::list>(list_obj);
+        };
+
+        nb::class_<NativeHilbert>(m, "Hilbert")
         .def("__init__", [](NativeHilbert* t, nb::handle points_handle, nb::handle bits_handle, nb::handle bounds_handle) {
             int bits = 16;
             if (!bits_handle.is_none()) {
@@ -872,37 +951,9 @@ NB_MODULE(cpp, m) {
             auto res = self.closest_point(pt);
             return make_tuple_from_doubles(res);
         }, nb::arg("point"), "Find the closest point in the Hilbert index")
-        .def("closest_indices", [](const NativeHilbert& self, nb::handle points_handle) {
-            auto points = validate_points(points_handle, self.dimensions);
-            if (points.empty()) return nb::list();
-            if (self.size() == 0) throw std::invalid_argument("tree is empty");
-            nb::list out;
-            for (const auto& point : points) {
-                out.append(self.closest_idx(point));
-            }
-            return out;
-        }, nb::arg("points"), "Return original dataset indices in query order")
-        .def("closest_indicies", [](const NativeHilbert& self, nb::handle points_handle) {
-            auto points = validate_points(points_handle, self.dimensions);
-            if (points.empty()) return nb::list();
-            if (self.size() == 0) throw std::invalid_argument("tree is empty");
-            nb::list out;
-            for (const auto& point : points) {
-                out.append(self.closest_idx(point));
-            }
-            return out;
-        }, nb::arg("points"), "Return original dataset indices in query order")
-        .def("closest_points", [](const NativeHilbert& self, nb::handle points_handle) {
-            auto points = validate_points(points_handle, self.dimensions);
-            if (points.empty()) return nb::list();
-            if (self.size() == 0) throw std::invalid_argument("tree is empty");
-            nb::list out;
-            for (const auto& point : points) {
-                auto res = self.closest_point(point);
-                out.append(make_tuple_from_doubles(res));
-            }
-            return out;
-        }, nb::arg("points"), "Return closest points in query order")
+        .def("closest_indices", hilbert_closest_indices, nb::arg("points"), "Return original dataset indices in query order")
+        .def("closest_indicies", hilbert_closest_indices, nb::arg("points"), "Return original dataset indices in query order")
+        .def("closest_points", hilbert_closest_points, nb::arg("points"), "Return closest points in query order")
         .def("closest_hilbert_idx", [](const NativeHilbert& self, nb::handle point_handle) {
             auto pt = parse_nd_query(point_handle, self.dimensions);
             return self.closest_idx(pt);
@@ -912,37 +963,69 @@ NB_MODULE(cpp, m) {
             auto res = self.closest_point(pt);
             return make_tuple_from_doubles(res);
         }, nb::arg("point"))
-        .def("closest_hilbert_indices", [](const NativeHilbert& self, nb::handle points_handle) {
-            auto points = validate_points(points_handle, self.dimensions);
-            if (points.empty()) return nb::list();
-            if (self.size() == 0) throw std::invalid_argument("tree is empty");
-            nb::list out;
-            for (const auto& point : points) {
-                out.append(self.closest_idx(point));
+        .def("closest_hilbert_indices", hilbert_closest_indices, nb::arg("points"))
+        .def("closest_hilbert_indicies", hilbert_closest_indices, nb::arg("points"))
+        .def("closest_hilbert_points", hilbert_closest_points, nb::arg("points"));
+
+    auto geo_hilbert_closest_indices = [](const NativeGeoHilbert& self, nb::handle points_handle) {
+        auto points = validate_points_2d(points_handle);
+        if (points.empty()) return nb::list();
+        if (self.size() == 0) throw std::invalid_argument("tree is empty");
+        const size_t n = points.size();
+        std::vector<size_t> out(n);
+        {
+            nb::gil_scoped_release release;
+            for (size_t i = 0; i < n; ++i) {
+                out[i] = self.closest_idx(points[i].first, points[i].second);
             }
-            return out;
-        }, nb::arg("points"))
-        .def("closest_hilbert_indicies", [](const NativeHilbert& self, nb::handle points_handle) {
-            auto points = validate_points(points_handle, self.dimensions);
-            if (points.empty()) return nb::list();
-            if (self.size() == 0) throw std::invalid_argument("tree is empty");
-            nb::list out;
-            for (const auto& point : points) {
-                out.append(self.closest_idx(point));
+        }
+        PyObject* list_obj = PyList_New(n);
+        if (!list_obj) throw nb::python_error();
+        for (size_t i = 0; i < n; ++i) {
+            PyObject* val = PyLong_FromSize_t(out[i]);
+            if (!val) {
+                Py_DECREF(list_obj);
+                throw nb::python_error();
             }
-            return out;
-        }, nb::arg("points"))
-        .def("closest_hilbert_points", [](const NativeHilbert& self, nb::handle points_handle) {
-            auto points = validate_points(points_handle, self.dimensions);
-            if (points.empty()) return nb::list();
-            if (self.size() == 0) throw std::invalid_argument("tree is empty");
-            nb::list out;
-            for (const auto& point : points) {
-                auto res = self.closest_point(point);
-                out.append(make_tuple_from_doubles(res));
+            PyList_SET_ITEM(list_obj, i, val);
+        }
+        return nb::steal<nb::list>(list_obj);
+    };
+
+    auto geo_hilbert_closest_points = [](const NativeGeoHilbert& self, nb::handle points_handle) {
+        auto points = validate_points_2d(points_handle);
+        if (points.empty()) return nb::list();
+        if (self.size() == 0) throw std::invalid_argument("tree is empty");
+        const size_t n = points.size();
+        std::vector<std::pair<double, double>> out(n);
+        {
+            nb::gil_scoped_release release;
+            for (size_t i = 0; i < n; ++i) {
+                out[i] = self.closest_point(points[i].first, points[i].second);
             }
-            return out;
-        }, nb::arg("points"));
+        }
+        PyObject* list_obj = PyList_New(n);
+        if (!list_obj) throw nb::python_error();
+        for (size_t i = 0; i < n; ++i) {
+            PyObject* p0 = PyFloat_FromDouble(out[i].first);
+            PyObject* p1 = PyFloat_FromDouble(out[i].second);
+            if (!p0 || !p1) {
+                Py_XDECREF(p0);
+                Py_XDECREF(p1);
+                Py_DECREF(list_obj);
+                throw nb::python_error();
+            }
+            PyObject* t = PyTuple_Pack(2, p0, p1);
+            Py_DECREF(p0);
+            Py_DECREF(p1);
+            if (!t) {
+                Py_DECREF(list_obj);
+                throw nb::python_error();
+            }
+            PyList_SET_ITEM(list_obj, i, t);
+        }
+        return nb::steal<nb::list>(list_obj);
+    };
 
     nb::class_<NativeGeoHilbert>(m, "GeoHilbert")
         .def("__init__", [](NativeGeoHilbert* t, nb::handle points_handle, nb::handle bits_handle) {
@@ -984,37 +1067,9 @@ NB_MODULE(cpp, m) {
             auto res = self.closest_point(p.first, p.second);
             return nb::make_tuple(res.first, res.second);
         }, nb::arg("point"), "Find the closest point (lat, lon) to the given (lat, lon) pair")
-        .def("closest_indices", [](const NativeGeoHilbert& self, nb::handle points_handle) {
-            auto points = validate_points_2d(points_handle);
-            if (points.empty()) return nb::list();
-            if (self.size() == 0) throw std::invalid_argument("tree is empty");
-            nb::list out;
-            for (const auto& point : points) {
-                out.append(self.closest_idx(point.first, point.second));
-            }
-            return out;
-        }, nb::arg("points"), "Return original dataset indices in query order")
-        .def("closest_indicies", [](const NativeGeoHilbert& self, nb::handle points_handle) {
-            auto points = validate_points_2d(points_handle);
-            if (points.empty()) return nb::list();
-            if (self.size() == 0) throw std::invalid_argument("tree is empty");
-            nb::list out;
-            for (const auto& point : points) {
-                out.append(self.closest_idx(point.first, point.second));
-            }
-            return out;
-        }, nb::arg("points"), "Return original dataset indices in query order")
-        .def("closest_points", [](const NativeGeoHilbert& self, nb::handle points_handle) {
-            auto points = validate_points_2d(points_handle);
-            if (points.empty()) return nb::list();
-            if (self.size() == 0) throw std::invalid_argument("tree is empty");
-            nb::list out;
-            for (const auto& point : points) {
-                auto res = self.closest_point(point.first, point.second);
-                out.append(nb::make_tuple(res.first, res.second));
-            }
-            return out;
-        }, nb::arg("points"), "Return closest (lat, lon) points in query order")
+        .def("closest_indices", geo_hilbert_closest_indices, nb::arg("points"), "Return original dataset indices in query order")
+        .def("closest_indicies", geo_hilbert_closest_indices, nb::arg("points"), "Return original dataset indices in query order")
+        .def("closest_points", geo_hilbert_closest_points, nb::arg("points"), "Return closest (lat, lon) points in query order")
         .def("closest_hilbert_idx", [](const NativeGeoHilbert& self, nb::handle point_handle) {
             auto p = parse_geo_query(point_handle);
             return self.closest_idx(p.first, p.second);
@@ -1024,37 +1079,9 @@ NB_MODULE(cpp, m) {
             auto res = self.closest_point(p.first, p.second);
             return nb::make_tuple(res.first, res.second);
         }, nb::arg("point"))
-        .def("closest_hilbert_indices", [](const NativeGeoHilbert& self, nb::handle points_handle) {
-            auto points = validate_points_2d(points_handle);
-            if (points.empty()) return nb::list();
-            if (self.size() == 0) throw std::invalid_argument("tree is empty");
-            nb::list out;
-            for (const auto& point : points) {
-                out.append(self.closest_idx(point.first, point.second));
-            }
-            return out;
-        }, nb::arg("points"))
-        .def("closest_hilbert_indicies", [](const NativeGeoHilbert& self, nb::handle points_handle) {
-            auto points = validate_points_2d(points_handle);
-            if (points.empty()) return nb::list();
-            if (self.size() == 0) throw std::invalid_argument("tree is empty");
-            nb::list out;
-            for (const auto& point : points) {
-                out.append(self.closest_idx(point.first, point.second));
-            }
-            return out;
-        }, nb::arg("points"))
-        .def("closest_hilbert_points", [](const NativeGeoHilbert& self, nb::handle points_handle) {
-            auto points = validate_points_2d(points_handle);
-            if (points.empty()) return nb::list();
-            if (self.size() == 0) throw std::invalid_argument("tree is empty");
-            nb::list out;
-            for (const auto& point : points) {
-                auto res = self.closest_point(point.first, point.second);
-                out.append(nb::make_tuple(res.first, res.second));
-            }
-            return out;
-        }, nb::arg("points"));
+        .def("closest_hilbert_indices", geo_hilbert_closest_indices, nb::arg("points"))
+        .def("closest_hilbert_indicies", geo_hilbert_closest_indices, nb::arg("points"))
+        .def("closest_hilbert_points", geo_hilbert_closest_points, nb::arg("points"));
 
     // Helper functions
     m.def("squared_distance", &kdtree_helpers::squared_distance,

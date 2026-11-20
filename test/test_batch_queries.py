@@ -2,6 +2,8 @@
 
 import random
 
+from concurrent.futures import ThreadPoolExecutor
+
 import pytest
 
 from geokdtree.kdtree import KDTree as PyKDTree
@@ -153,3 +155,32 @@ def test_batch_api_has_no_order_or_hilbert_constructor_options(cls):
     if cls in GEO_CLASSES:
         with pytest.raises(TypeError):
             tree.closest_indices([], order="input")
+
+
+@pytest.mark.parametrize("cls", KD_CLASSES + GEO_CLASSES)
+def test_concurrent_batch_queries_in_threads(cls):
+    rng = random.Random(42)
+    if cls in KD_CLASSES:
+        points = [
+            (rng.uniform(-100, 100), rng.uniform(-100, 100)) for _ in range(500)
+        ]
+        queries = [
+            (rng.uniform(-100, 100), rng.uniform(-100, 100)) for _ in range(200)
+        ]
+    else:
+        points = [
+            (rng.uniform(-80, 80), rng.uniform(-170, 170)) for _ in range(500)
+        ]
+        queries = [
+            (rng.uniform(-80, 80), rng.uniform(-170, 170)) for _ in range(200)
+        ]
+    tree = cls(points)
+    expected_pts = tree.closest_points(queries)
+
+    def worker(q):
+        return tree.closest_points(q)
+
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        futures = [executor.submit(worker, queries) for _ in range(8)]
+        for f in futures:
+            assert f.result() == expected_pts
