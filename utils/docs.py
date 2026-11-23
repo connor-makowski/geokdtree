@@ -7,8 +7,9 @@ from pathlib import Path
 root = Path(__file__).parent.parent
 geokdtree = root / "geokdtree" / "__init__.py"
 
-VERSION = "1.3.0"
+VERSION = "1.4.0"
 OLD_DOC_VERSIONS = [
+    "1.3.0",
     "1.2.4",
     "1.1.0",
     "1.0.1",
