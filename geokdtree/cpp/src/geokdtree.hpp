@@ -57,13 +57,14 @@ struct GeoPointInternal {
     double x = 0.0;
     double y = 0.0;
     double z = 0.0;
-    double lat = 0.0;
-    double lon = 0.0;
     int idx = 0;
 };
 
 // Geo KD-Tree node structure (flat arena, inline AABB, lat/lon & coordinates)
 struct GeoKDNode {
+    double min_x = 0.0, max_x = 0.0;
+    double min_y = 0.0, max_y = 0.0;
+    double min_z = 0.0, max_z = 0.0;
     double x = 0.0;
     double y = 0.0;
     double z = 0.0;
@@ -71,9 +72,6 @@ struct GeoKDNode {
     double lon = 0.0;
     int idx = 0;
     int axis = 0;
-    double min_x = 0.0, max_x = 0.0;
-    double min_y = 0.0, max_y = 0.0;
-    double min_z = 0.0, max_z = 0.0;
     int left = -1;
     int right = -1;
     size_t leaf_start = 0;
@@ -200,6 +198,7 @@ private:
     static constexpr size_t LEAF_SIZE = 32;
     std::vector<GeoKDNode> nodes;
     std::vector<GeoPointInternal> leaf_points;
+    std::vector<std::pair<double, double>> leaf_geo;
     int root = -1;
     std::vector<std::pair<double, double>> original_points;
 
@@ -227,6 +226,7 @@ private:
     void find_closest_point_per_quadrant_3d(
         const GeoKDNode* nodes_ptr,
         const GeoPointInternal* leaf_ptr,
+        const std::pair<double, double>* leaf_geo_ptr,
         int node_idx,
         double qx,
         double qy,
