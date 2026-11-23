@@ -95,10 +95,10 @@ Typical benchmark results (see [benchmark.md](benchmark.md) for full benchmarks)
 
 | Number of Points ($N$) | C++ Build Time | Python Build Time | C++ Query Time | Python Query Time |
 | ---------------------: | -------------: | ----------------: | -------------: | ----------------: |
-|                  1,000 |       ~0.35 ms |           ~1.4 ms |       ~0.39 µs |           ~7.6 µs |
-|                 10,000 |        ~4.9 ms |            ~18 ms |       ~0.48 µs |          ~10.5 µs |
-|                100,000 |         ~57 ms |           ~275 ms |       ~0.90 µs |          ~15.8 µs |
-|              1,000,000 |        ~670 ms |            ~5.4 s |        ~1.9 µs |          ~23.4 µs |
+|                  1,000 |       ~0.13 ms |           ~1.3 ms |       ~0.27 µs |           ~7.5 µs |
+|                 10,000 |        ~2.1 ms |            ~17 ms |       ~0.37 µs |           ~9.8 µs |
+|                100,000 |         ~23 ms |           ~265 ms |       ~0.53 µs |          ~15.2 µs |
+|              1,000,000 |        ~285 ms |            ~5.1 s |        ~1.4 µs |          ~21.2 µs |
 
 This makes GeoKDTree well-suited for:
 
