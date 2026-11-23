@@ -9,15 +9,21 @@ from pathlib import Path
 
 from geokdtree.geokdtree import GeoKDTree as PyGeoKDTree
 from geokdtree.kdtree import KDTree as PyKDTree
+from geokdtree.hilbert import Hilbert as PyHilbert
+from geokdtree.hilbert import GeoHilbert as PyGeoHilbert
 
 try:
     from geokdtree.cpp import GeoKDTree as CppGeoKDTree
     from geokdtree.cpp import KDTree as CppKDTree
+    from geokdtree.cpp import Hilbert as CppHilbert
+    from geokdtree.cpp import GeoHilbert as CppGeoHilbert
 
     HAS_CPP = True
 except ImportError:
     CppGeoKDTree = None
     CppKDTree = None
+    CppHilbert = None
+    CppGeoHilbert = None
     HAS_CPP = False
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -94,6 +100,11 @@ def benchmark_geokdtree():
             py_tree.closest_point(q)
         py_pt_us = ((time.perf_counter() - t0) / query_count) * 1_000_000
 
+        # Python closest_indices (batch)
+        t0 = time.perf_counter()
+        py_tree.closest_indices(queries)
+        py_batch_us = ((time.perf_counter() - t0) / query_count) * 1_000_000
+
         # Python closest_point_per_quadrant
         t0 = time.perf_counter()
         for q in queries:
@@ -103,8 +114,12 @@ def benchmark_geokdtree():
         row["py_build_ms"] = py_build_ms
         row["py_idx_us"] = py_idx_us
         row["py_pt_us"] = py_pt_us
+        row["py_batch_us"] = py_batch_us
         row["py_quad_us"] = py_quad_us
         row["py_qps"] = int(1_000_000 / py_idx_us) if py_idx_us > 0 else 0
+        row["py_batch_qps"] = (
+            int(1_000_000 / py_batch_us) if py_batch_us > 0 else 0
+        )
         row["py_quad_qps"] = (
             int(1_000_000 / py_quad_us) if py_quad_us > 0 else 0
         )
@@ -112,6 +127,7 @@ def benchmark_geokdtree():
         print(
             f"  [Pure Python] Build: {py_build_ms:8.2f} ms | "
             f"Nearest: {py_idx_us:6.2f} µs | "
+            f"Batch: {py_batch_us:6.2f} µs | "
             f"Quadrant: {py_quad_us:6.2f} µs | QPS: {row['py_qps']:,}"
         )
 
@@ -133,6 +149,13 @@ def benchmark_geokdtree():
                 cpp_tree.closest_point(q)
             cpp_pt_us = ((time.perf_counter() - t0) / query_count) * 1_000_000
 
+            # C++ closest_indices (batch)
+            t0 = time.perf_counter()
+            cpp_tree.closest_indices(queries)
+            cpp_batch_us = (
+                (time.perf_counter() - t0) / query_count
+            ) * 1_000_000
+
             # C++ closest_point_per_quadrant
             t0 = time.perf_counter()
             for q in queries:
@@ -142,9 +165,13 @@ def benchmark_geokdtree():
             row["cpp_build_ms"] = cpp_build_ms
             row["cpp_idx_us"] = cpp_idx_us
             row["cpp_pt_us"] = cpp_pt_us
+            row["cpp_batch_us"] = cpp_batch_us
             row["cpp_quad_us"] = cpp_quad_us
             row["cpp_qps"] = (
                 int(1_000_000 / cpp_idx_us) if cpp_idx_us > 0 else 0
+            )
+            row["cpp_batch_qps"] = (
+                int(1_000_000 / cpp_batch_us) if cpp_batch_us > 0 else 0
             )
             row["cpp_quad_qps"] = (
                 int(1_000_000 / cpp_quad_us) if cpp_quad_us > 0 else 0
@@ -155,6 +182,9 @@ def benchmark_geokdtree():
             row["query_speedup"] = (
                 py_idx_us / cpp_idx_us if cpp_idx_us > 0 else 1.0
             )
+            row["batch_speedup"] = (
+                py_batch_us / cpp_batch_us if cpp_batch_us > 0 else 1.0
+            )
             row["quad_speedup"] = (
                 py_quad_us / cpp_quad_us if cpp_quad_us > 0 else 1.0
             )
@@ -162,8 +192,9 @@ def benchmark_geokdtree():
             print(
                 f"  [C++ Extension] Build: {cpp_build_ms:8.2f} ms | "
                 f"Nearest: {cpp_idx_us:6.2f} µs | "
+                f"Batch: {cpp_batch_us:6.2f} µs | "
                 f"Quadrant: {cpp_quad_us:6.2f} µs | "
-                f"Speedup: {row['query_speedup']:.1f}x (quad: {row['quad_speedup']:.1f}x)"
+                f"Speedup: {row['query_speedup']:.1f}x (batch: {row['batch_speedup']:.1f}x, quad: {row['quad_speedup']:.1f}x)"
             )
 
         results.append(row)
@@ -209,7 +240,7 @@ def benchmark_kdtree():
 
         # 1. Pure Python
         t0 = time.perf_counter()
-        py_tree = PyKDTree(points)
+        py_tree = PyKDTree(points.copy())
         py_build_ms = (time.perf_counter() - t0) * 1000
 
         # Python closest_point
@@ -217,6 +248,11 @@ def benchmark_kdtree():
         for q in queries:
             py_tree.closest_point(q)
         py_q_us = ((time.perf_counter() - t0) / query_count) * 1_000_000
+
+        # Python closest_points (batch)
+        t0 = time.perf_counter()
+        py_tree.closest_points(queries)
+        py_batch_us = ((time.perf_counter() - t0) / query_count) * 1_000_000
 
         # Python closest_point_per_quadrant
         t0 = time.perf_counter()
@@ -226,8 +262,12 @@ def benchmark_kdtree():
 
         row["py_build_ms"] = py_build_ms
         row["py_q_us"] = py_q_us
+        row["py_batch_us"] = py_batch_us
         row["py_quad_us"] = py_quad_us
         row["py_qps"] = int(1_000_000 / py_q_us) if py_q_us > 0 else 0
+        row["py_batch_qps"] = (
+            int(1_000_000 / py_batch_us) if py_batch_us > 0 else 0
+        )
         row["py_quad_qps"] = (
             int(1_000_000 / py_quad_us) if py_quad_us > 0 else 0
         )
@@ -235,6 +275,7 @@ def benchmark_kdtree():
         print(
             f"  [Pure Python] Build: {py_build_ms:8.2f} ms | "
             f"Nearest: {py_q_us:6.2f} µs | "
+            f"Batch: {py_batch_us:6.2f} µs | "
             f"Quadrant: {py_quad_us:6.2f} µs | QPS: {row['py_qps']:,}"
         )
 
@@ -250,6 +291,13 @@ def benchmark_kdtree():
                 cpp_tree.closest_point(q)
             cpp_q_us = ((time.perf_counter() - t0) / query_count) * 1_000_000
 
+            # C++ closest_points (batch)
+            t0 = time.perf_counter()
+            cpp_tree.closest_points(queries)
+            cpp_batch_us = (
+                (time.perf_counter() - t0) / query_count
+            ) * 1_000_000
+
             # C++ closest_point_per_quadrant
             t0 = time.perf_counter()
             for q in queries:
@@ -258,8 +306,12 @@ def benchmark_kdtree():
 
             row["cpp_build_ms"] = cpp_build_ms
             row["cpp_q_us"] = cpp_q_us
+            row["cpp_batch_us"] = cpp_batch_us
             row["cpp_quad_us"] = cpp_quad_us
             row["cpp_qps"] = int(1_000_000 / cpp_q_us) if cpp_q_us > 0 else 0
+            row["cpp_batch_qps"] = (
+                int(1_000_000 / cpp_batch_us) if cpp_batch_us > 0 else 0
+            )
             row["cpp_quad_qps"] = (
                 int(1_000_000 / cpp_quad_us) if cpp_quad_us > 0 else 0
             )
@@ -267,6 +319,9 @@ def benchmark_kdtree():
                 py_build_ms / cpp_build_ms if cpp_build_ms > 0 else 1.0
             )
             row["query_speedup"] = py_q_us / cpp_q_us if cpp_q_us > 0 else 1.0
+            row["batch_speedup"] = (
+                py_batch_us / cpp_batch_us if cpp_batch_us > 0 else 1.0
+            )
             row["quad_speedup"] = (
                 py_quad_us / cpp_quad_us if cpp_quad_us > 0 else 1.0
             )
@@ -274,8 +329,289 @@ def benchmark_kdtree():
             print(
                 f"  [C++ Extension] Build: {cpp_build_ms:8.2f} ms | "
                 f"Nearest: {cpp_q_us:6.2f} µs | "
+                f"Batch: {cpp_batch_us:6.2f} µs | "
                 f"Quadrant: {cpp_quad_us:6.2f} µs | "
-                f"Speedup: {row['query_speedup']:.1f}x (quad: {row['quad_speedup']:.1f}x)"
+                f"Speedup: {row['query_speedup']:.1f}x (batch: {row['batch_speedup']:.1f}x, quad: {row['quad_speedup']:.1f}x)"
+            )
+
+        results.append(row)
+
+    return results
+
+
+def benchmark_geohilbert():
+    print("\n" + "=" * 60)
+    print(" Running GeoHilbert Benchmarks (Latitude/Longitude)")
+    print("=" * 60)
+
+    magnitudes = [3, 4, 5, 6]  # 1K, 10K, 100K, 1M
+    results = []
+
+    random.seed(42)
+
+    for mag in magnitudes:
+        num_points = 10**mag
+        query_count = (
+            5000
+            if num_points <= 10000
+            else (1000 if num_points <= 100000 else 200)
+        )
+
+        print(
+            f"\n--- Benchmark N = {num_points:,} points (queries: {query_count:,}) ---"
+        )
+
+        points = [
+            (random.uniform(-90.0, 90.0), random.uniform(-180.0, 180.0))
+            for _ in range(num_points)
+        ]
+        queries = [
+            (random.uniform(-90.0, 90.0), random.uniform(-180.0, 180.0))
+            for _ in range(query_count)
+        ]
+
+        row = {
+            "n": num_points,
+            "query_count": query_count,
+        }
+
+        # 1. Pure Python Benchmark
+        t0 = time.perf_counter()
+        py_tree = PyGeoHilbert(points)
+        py_build_ms = (time.perf_counter() - t0) * 1000
+
+        t0 = time.perf_counter()
+        for q in queries:
+            py_tree.closest_idx(q)
+        py_idx_us = ((time.perf_counter() - t0) / query_count) * 1_000_000
+
+        t0 = time.perf_counter()
+        for q in queries:
+            py_tree.closest_point(q)
+        py_pt_us = ((time.perf_counter() - t0) / query_count) * 1_000_000
+
+        # Python closest_indices (batch)
+        t0 = time.perf_counter()
+        py_tree.closest_indices(queries)
+        py_batch_us = ((time.perf_counter() - t0) / query_count) * 1_000_000
+
+        t0 = time.perf_counter()
+        py_tree.hilbert_order()
+        py_order_ms = (time.perf_counter() - t0) * 1000
+
+        row["py_build_ms"] = py_build_ms
+        row["py_idx_us"] = py_idx_us
+        row["py_pt_us"] = py_pt_us
+        row["py_batch_us"] = py_batch_us
+        row["py_order_ms"] = py_order_ms
+        row["py_qps"] = int(1_000_000 / py_pt_us) if py_pt_us > 0 else 0
+        row["py_batch_qps"] = (
+            int(1_000_000 / py_batch_us) if py_batch_us > 0 else 0
+        )
+
+        print(
+            f"  [Pure Python]  Build: {py_build_ms:8.2f} ms | "
+            f"Nearest: {py_pt_us:6.2f} µs | "
+            f"Batch: {py_batch_us:6.2f} µs | "
+            f"Index: {py_idx_us:6.2f} µs | "
+            f"Order: {py_order_ms:6.2f} ms | QPS: {row['py_qps']:,}"
+        )
+
+        # 2. C++ (if available)
+        if HAS_CPP:
+            t0 = time.perf_counter()
+            cpp_tree = CppGeoHilbert(points)
+            cpp_build_ms = (time.perf_counter() - t0) * 1000
+
+            t0 = time.perf_counter()
+            for q in queries:
+                cpp_tree.closest_idx(q)
+            cpp_idx_us = ((time.perf_counter() - t0) / query_count) * 1_000_000
+
+            t0 = time.perf_counter()
+            for q in queries:
+                cpp_tree.closest_point(q)
+            cpp_pt_us = ((time.perf_counter() - t0) / query_count) * 1_000_000
+
+            t0 = time.perf_counter()
+            cpp_tree.closest_indices(queries)
+            cpp_batch_us = (
+                (time.perf_counter() - t0) / query_count
+            ) * 1_000_000
+
+            t0 = time.perf_counter()
+            cpp_tree.hilbert_order()
+            cpp_order_ms = (time.perf_counter() - t0) * 1000
+
+            row["cpp_build_ms"] = cpp_build_ms
+            row["cpp_idx_us"] = cpp_idx_us
+            row["cpp_pt_us"] = cpp_pt_us
+            row["cpp_batch_us"] = cpp_batch_us
+            row["cpp_order_ms"] = cpp_order_ms
+            row["cpp_qps"] = int(1_000_000 / cpp_pt_us) if cpp_pt_us > 0 else 0
+            row["cpp_batch_qps"] = (
+                int(1_000_000 / cpp_batch_us) if cpp_batch_us > 0 else 0
+            )
+            row["build_speedup"] = (
+                py_build_ms / cpp_build_ms if cpp_build_ms > 0 else 1.0
+            )
+            row["query_speedup"] = (
+                py_pt_us / cpp_pt_us if cpp_pt_us > 0 else 1.0
+            )
+            row["batch_speedup"] = (
+                py_batch_us / cpp_batch_us if cpp_batch_us > 0 else 1.0
+            )
+            row["order_speedup"] = (
+                py_order_ms / cpp_order_ms if cpp_order_ms > 0 else 1.0
+            )
+
+            print(
+                f"  [C++ Extension] Build: {cpp_build_ms:8.2f} ms | "
+                f"Nearest: {cpp_pt_us:6.2f} µs | "
+                f"Batch: {cpp_batch_us:6.2f} µs | "
+                f"Index: {cpp_idx_us:6.2f} µs | "
+                f"Order: {cpp_order_ms:6.2f} ms | "
+                f"Speedup: {row['query_speedup']:.1f}x (build: {row['build_speedup']:.1f}x)"
+            )
+
+        results.append(row)
+
+    return results
+
+
+def benchmark_hilbert():
+    print("\n" + "=" * 60)
+    print(" Running Hilbert Spatial Index Benchmarks (2D Cartesian)")
+    print("=" * 60)
+
+    magnitudes = [3, 4, 5, 6]  # 1K, 10K, 100K, 1M
+    results = []
+
+    random.seed(42)
+
+    for mag in magnitudes:
+        num_points = 10**mag
+        query_count = (
+            5000
+            if num_points <= 10000
+            else (1000 if num_points <= 100000 else 200)
+        )
+
+        print(
+            f"\n--- Benchmark N = {num_points:,} points (queries: {query_count:,}) ---"
+        )
+
+        points = [
+            (random.uniform(0.0, 1000.0), random.uniform(0.0, 1000.0))
+            for _ in range(num_points)
+        ]
+        queries = [
+            (random.uniform(0.0, 1000.0), random.uniform(0.0, 1000.0))
+            for _ in range(query_count)
+        ]
+
+        row = {
+            "n": num_points,
+            "query_count": query_count,
+        }
+
+        # 1. Pure Python Benchmark
+        t0 = time.perf_counter()
+        py_tree = PyHilbert(points)
+        py_build_ms = (time.perf_counter() - t0) * 1000
+
+        t0 = time.perf_counter()
+        for q in queries:
+            py_tree.closest_idx(q)
+        py_idx_us = ((time.perf_counter() - t0) / query_count) * 1_000_000
+
+        t0 = time.perf_counter()
+        for q in queries:
+            py_tree.closest_point(q)
+        py_pt_us = ((time.perf_counter() - t0) / query_count) * 1_000_000
+
+        # Python closest_indices (batch)
+        t0 = time.perf_counter()
+        py_tree.closest_indices(queries)
+        py_batch_us = ((time.perf_counter() - t0) / query_count) * 1_000_000
+
+        t0 = time.perf_counter()
+        py_tree.hilbert_order()
+        py_order_ms = (time.perf_counter() - t0) * 1000
+
+        row["py_build_ms"] = py_build_ms
+        row["py_idx_us"] = py_idx_us
+        row["py_pt_us"] = py_pt_us
+        row["py_batch_us"] = py_batch_us
+        row["py_order_ms"] = py_order_ms
+        row["py_qps"] = int(1_000_000 / py_pt_us) if py_pt_us > 0 else 0
+        row["py_batch_qps"] = (
+            int(1_000_000 / py_batch_us) if py_batch_us > 0 else 0
+        )
+
+        print(
+            f"  [Pure Python]  Build: {py_build_ms:8.2f} ms | "
+            f"Nearest: {py_pt_us:6.2f} µs | "
+            f"Batch: {py_batch_us:6.2f} µs | "
+            f"Index: {py_idx_us:6.2f} µs | "
+            f"Order: {py_order_ms:6.2f} ms | QPS: {row['py_qps']:,}"
+        )
+
+        # 2. C++ (if available)
+        if HAS_CPP:
+            t0 = time.perf_counter()
+            cpp_tree = CppHilbert(points)
+            cpp_build_ms = (time.perf_counter() - t0) * 1000
+
+            t0 = time.perf_counter()
+            for q in queries:
+                cpp_tree.closest_idx(q)
+            cpp_idx_us = ((time.perf_counter() - t0) / query_count) * 1_000_000
+
+            t0 = time.perf_counter()
+            for q in queries:
+                cpp_tree.closest_point(q)
+            cpp_pt_us = ((time.perf_counter() - t0) / query_count) * 1_000_000
+
+            t0 = time.perf_counter()
+            cpp_tree.closest_indices(queries)
+            cpp_batch_us = (
+                (time.perf_counter() - t0) / query_count
+            ) * 1_000_000
+
+            t0 = time.perf_counter()
+            cpp_tree.hilbert_order()
+            cpp_order_ms = (time.perf_counter() - t0) * 1000
+
+            row["cpp_build_ms"] = cpp_build_ms
+            row["cpp_idx_us"] = cpp_idx_us
+            row["cpp_pt_us"] = cpp_pt_us
+            row["cpp_batch_us"] = cpp_batch_us
+            row["cpp_order_ms"] = cpp_order_ms
+            row["cpp_qps"] = int(1_000_000 / cpp_pt_us) if cpp_pt_us > 0 else 0
+            row["cpp_batch_qps"] = (
+                int(1_000_000 / cpp_batch_us) if cpp_batch_us > 0 else 0
+            )
+            row["build_speedup"] = (
+                py_build_ms / cpp_build_ms if cpp_build_ms > 0 else 1.0
+            )
+            row["query_speedup"] = (
+                py_pt_us / cpp_pt_us if cpp_pt_us > 0 else 1.0
+            )
+            row["batch_speedup"] = (
+                py_batch_us / cpp_batch_us if cpp_batch_us > 0 else 1.0
+            )
+            row["order_speedup"] = (
+                py_order_ms / cpp_order_ms if cpp_order_ms > 0 else 1.0
+            )
+
+            print(
+                f"  [C++ Extension] Build: {cpp_build_ms:8.2f} ms | "
+                f"Nearest: {cpp_pt_us:6.2f} µs | "
+                f"Batch: {cpp_batch_us:6.2f} µs | "
+                f"Index: {cpp_idx_us:6.2f} µs | "
+                f"Order: {cpp_order_ms:6.2f} ms | "
+                f"Speedup: {row['query_speedup']:.1f}x (build: {row['build_speedup']:.1f}x)"
             )
 
         results.append(row)
@@ -301,7 +637,9 @@ def format_us(val):
         return f"{val / 1000:.2f} ms"
 
 
-def generate_markdown(sys_info, geo_results, kd_results):
+def generate_markdown(
+    sys_info, geo_results, kd_results, geohilbert_results, hilbert_results
+):
     md = []
     md.append("# GeoKDTree Performance Benchmarks\n")
     md.append(
@@ -344,9 +682,11 @@ def generate_markdown(sys_info, geo_results, kd_results):
     if sys_info["has_cpp"]:
         md.append("### C++ vs Pure Python Comparison\n")
         md.append(
-            "| Dataset Size ($N$) | C++ Build | Python Build | Build Speedup | C++ Nearest | Python Nearest | Nearest Speedup | C++ 4-Quadrant | Python 4-Quadrant | Quadrant Speedup |"
+            "| Dataset Size ($N$) | C++ Build | Python Build | Build Speedup | C++ Nearest | Python Nearest | Nearest Speedup | C++ Batch | Python Batch | Batch Speedup | C++ 4-Quadrant | Python 4-Quadrant | Quadrant Speedup |"
         )
-        md.append("|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|")
+        md.append(
+            "|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|"
+        )
         for r in geo_results:
             n_str = f"{r['n']:,}"
             cpp_build = format_ms(r["cpp_build_ms"])
@@ -355,35 +695,40 @@ def generate_markdown(sys_info, geo_results, kd_results):
             cpp_q = format_us(r["cpp_idx_us"])
             py_q = format_us(r["py_idx_us"])
             q_speedup = f"**{r['query_speedup']:.1f}x**"
+            cpp_batch = format_us(r["cpp_batch_us"])
+            py_batch = format_us(r["py_batch_us"])
+            batch_speedup = f"**{r['batch_speedup']:.1f}x**"
             cpp_quad = format_us(r["cpp_quad_us"])
             py_quad = format_us(r["py_quad_us"])
             quad_speedup = f"**{r['quad_speedup']:.1f}x**"
             md.append(
-                f"| {n_str} | {cpp_build} | {py_build} | {b_speedup} | {cpp_q} | {py_q} | {q_speedup} | {cpp_quad} | {py_quad} | {quad_speedup} |"
+                f"| {n_str} | {cpp_build} | {py_build} | {b_speedup} | {cpp_q} | {py_q} | {q_speedup} | {cpp_batch} | {py_batch} | {batch_speedup} | {cpp_quad} | {py_quad} | {quad_speedup} |"
             )
         md.append("")
 
         md.append("### Detailed C++ GeoKDTree Results\n")
         md.append(
-            "| Points ($N$) | Build Time | `closest_idx` | `closest_point` | `closest_point_per_quadrant` | Nearest QPS | Quadrant QPS |"
+            "| Points ($N$) | Build Time | `closest_idx` | `closest_point` | Batch (`closest_indices`) | `closest_point_per_quadrant` | Nearest QPS | Batch QPS | Quadrant QPS |"
         )
-        md.append("|---:|---:|---:|---:|---:|---:|---:|")
+        md.append("|---:|---:|---:|---:|---:|---:|---:|---:|---:|")
         for r in geo_results:
             md.append(
                 f"| {r['n']:,} | {format_ms(r['cpp_build_ms'])} | {format_us(r['cpp_idx_us'])} | "
-                f"{format_us(r['cpp_pt_us'])} | {format_us(r['cpp_quad_us'])} | {r['cpp_qps']:,} qps | {r['cpp_quad_qps']:,} qps |"
+                f"{format_us(r['cpp_pt_us'])} | {format_us(r['cpp_batch_us'])} | {format_us(r['cpp_quad_us'])} | "
+                f"{r['cpp_qps']:,} qps | {r['cpp_batch_qps']:,} qps | {r['cpp_quad_qps']:,} qps |"
             )
         md.append("")
 
     md.append("### Detailed Pure Python GeoKDTree Results\n")
     md.append(
-        "| Points ($N$) | Build Time | `closest_idx` | `closest_point` | `closest_point_per_quadrant` | Nearest QPS | Quadrant QPS |"
+        "| Points ($N$) | Build Time | `closest_idx` | `closest_point` | Batch (`closest_indices`) | `closest_point_per_quadrant` | Nearest QPS | Batch QPS | Quadrant QPS |"
     )
-    md.append("|---:|---:|---:|---:|---:|---:|---:|")
+    md.append("|---:|---:|---:|---:|---:|---:|---:|---:|---:|")
     for r in geo_results:
         md.append(
             f"| {r['n']:,} | {format_ms(r['py_build_ms'])} | {format_us(r['py_idx_us'])} | "
-            f"{format_us(r['py_pt_us'])} | {format_us(r['py_quad_us'])} | {r['py_qps']:,} qps | {r['py_quad_qps']:,} qps |"
+            f"{format_us(r['py_pt_us'])} | {format_us(r['py_batch_us'])} | {format_us(r['py_quad_us'])} | "
+            f"{r['py_qps']:,} qps | {r['py_batch_qps']:,} qps | {r['py_quad_qps']:,} qps |"
         )
     md.append("\n")
 
@@ -392,9 +737,11 @@ def generate_markdown(sys_info, geo_results, kd_results):
     if sys_info["has_cpp"]:
         md.append("### C++ vs Pure Python Comparison\n")
         md.append(
-            "| Dataset Size ($N$) | C++ Build | Python Build | Build Speedup | C++ Nearest | Python Nearest | Nearest Speedup | C++ 4-Quadrant | Python 4-Quadrant | Quadrant Speedup |"
+            "| Dataset Size ($N$) | C++ Build | Python Build | Build Speedup | C++ Nearest | Python Nearest | Nearest Speedup | C++ Batch | Python Batch | Batch Speedup | C++ 4-Quadrant | Python 4-Quadrant | Quadrant Speedup |"
         )
-        md.append("|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|")
+        md.append(
+            "|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|"
+        )
         for r in kd_results:
             n_str = f"{r['n']:,}"
             cpp_build = format_ms(r["cpp_build_ms"])
@@ -403,39 +750,144 @@ def generate_markdown(sys_info, geo_results, kd_results):
             cpp_q = format_us(r["cpp_q_us"])
             py_q = format_us(r["py_q_us"])
             q_speedup = f"**{r['query_speedup']:.1f}x**"
+            cpp_batch = format_us(r["cpp_batch_us"])
+            py_batch = format_us(r["py_batch_us"])
+            batch_speedup = f"**{r['batch_speedup']:.1f}x**"
             cpp_quad = format_us(r["cpp_quad_us"])
             py_quad = format_us(r["py_quad_us"])
             quad_speedup = f"**{r['quad_speedup']:.1f}x**"
             md.append(
-                f"| {n_str} | {cpp_build} | {py_build} | {b_speedup} | {cpp_q} | {py_q} | {q_speedup} | {cpp_quad} | {py_quad} | {quad_speedup} |"
+                f"| {n_str} | {cpp_build} | {py_build} | {b_speedup} | {cpp_q} | {py_q} | {q_speedup} | {cpp_batch} | {py_batch} | {batch_speedup} | {cpp_quad} | {py_quad} | {quad_speedup} |"
             )
         md.append("### Detailed C++ KDTree Results\n")
         md.append(
-            "| Points ($N$) | Build Time | `closest_point` | `closest_point_per_quadrant` | Nearest QPS | Quadrant QPS |"
+            "| Points ($N$) | Build Time | `closest_point` | Batch (`closest_points`) | `closest_point_per_quadrant` | Nearest QPS | Batch QPS | Quadrant QPS |"
         )
-        md.append("|---:|---:|---:|---:|---:|---:|")
+        md.append("|---:|---:|---:|---:|---:|---:|---:|---:|")
         for r in kd_results:
             md.append(
                 f"| {r['n']:,} | {format_ms(r['cpp_build_ms'])} | {format_us(r['cpp_q_us'])} | "
-                f"{format_us(r['cpp_quad_us'])} | {r['cpp_qps']:,} qps | {r['cpp_quad_qps']:,} qps |"
+                f"{format_us(r['cpp_batch_us'])} | {format_us(r['cpp_quad_us'])} | "
+                f"{r['cpp_qps']:,} qps | {r['cpp_batch_qps']:,} qps | {r['cpp_quad_qps']:,} qps |"
             )
         md.append("")
 
     md.append("### Detailed Pure Python KDTree Results\n")
     md.append(
-        "| Points ($N$) | Build Time | `closest_point` | `closest_point_per_quadrant` | Nearest QPS | Quadrant QPS |"
+        "| Points ($N$) | Build Time | `closest_point` | Batch (`closest_points`) | `closest_point_per_quadrant` | Nearest QPS | Batch QPS | Quadrant QPS |"
     )
-    md.append("|---:|---:|---:|---:|---:|---:|")
+    md.append("|---:|---:|---:|---:|---:|---:|---:|---:|")
     for r in kd_results:
         md.append(
             f"| {r['n']:,} | {format_ms(r['py_build_ms'])} | {format_us(r['py_q_us'])} | "
-            f"{format_us(r['py_quad_us'])} | {r['py_qps']:,} qps | {r['py_quad_qps']:,} qps |"
+            f"{format_us(r['py_batch_us'])} | {format_us(r['py_quad_us'])} | "
+            f"{r['py_qps']:,} qps | {r['py_batch_qps']:,} qps | {r['py_quad_qps']:,} qps |"
+        )
+    md.append("\n")
+
+    # GeoHilbert Table
+    md.append("## GeoHilbert Benchmarks (Latitude/Longitude)\n")
+    if sys_info["has_cpp"]:
+        md.append("### C++ vs Pure Python Comparison\n")
+        md.append(
+            "| Dataset Size ($N$) | C++ Build | Python Build | Build Speedup | C++ Nearest | Python Nearest | Nearest Speedup | C++ Order | Python Order | Order Speedup |"
+        )
+        md.append("|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|")
+        for r in geohilbert_results:
+            n_str = f"{r['n']:,}"
+            cpp_build = format_ms(r["cpp_build_ms"])
+            py_build = format_ms(r["py_build_ms"])
+            b_speedup = f"**{r['build_speedup']:.2f}x**"
+            cpp_q = format_us(r["cpp_pt_us"])
+            py_q = format_us(r["py_pt_us"])
+            q_speedup = f"**{r['query_speedup']:.1f}x**"
+            cpp_order = format_ms(r["cpp_order_ms"])
+            py_order = format_ms(r["py_order_ms"])
+            order_speedup = f"**{r['order_speedup']:.1f}x**"
+            md.append(
+                f"| {n_str} | {cpp_build} | {py_build} | {b_speedup} | {cpp_q} | {py_q} | {q_speedup} | {cpp_order} | {py_order} | {order_speedup} |"
+            )
+        md.append("")
+
+        md.append("### Detailed C++ GeoHilbert Results\n")
+        md.append(
+            "| Points ($N$) | Build Time | `closest_point` | `closest_idx` | Batch (`closest_indices`) | `hilbert_order` | Nearest QPS | Batch QPS |"
+        )
+        md.append("|---:|---:|---:|---:|---:|---:|---:|---:|")
+        for r in geohilbert_results:
+            md.append(
+                f"| {r['n']:,} | {format_ms(r['cpp_build_ms'])} | {format_us(r['cpp_pt_us'])} | "
+                f"{format_us(r['cpp_idx_us'])} | {format_us(r['cpp_batch_us'])} | {format_ms(r['cpp_order_ms'])} | "
+                f"{r['cpp_qps']:,} qps | {r['cpp_batch_qps']:,} qps |"
+            )
+        md.append("")
+
+    md.append("### Detailed Pure Python GeoHilbert Results\n")
+    md.append(
+        "| Points ($N$) | Build Time | `closest_point` | `closest_idx` | Batch (`closest_indices`) | `hilbert_order` | Nearest QPS | Batch QPS |"
+    )
+    md.append("|---:|---:|---:|---:|---:|---:|---:|---:|")
+    for r in geohilbert_results:
+        md.append(
+            f"| {r['n']:,} | {format_ms(r['py_build_ms'])} | {format_us(r['py_pt_us'])} | "
+            f"{format_us(r['py_idx_us'])} | {format_us(r['py_batch_us'])} | {format_ms(r['py_order_ms'])} | "
+            f"{r['py_qps']:,} qps | {r['py_batch_qps']:,} qps |"
+        )
+    md.append("\n")
+
+    # Hilbert Table
+    md.append("## Hilbert Benchmarks (Cartesian 2D)\n")
+    if sys_info["has_cpp"]:
+        md.append("### C++ vs Pure Python Comparison\n")
+        md.append(
+            "| Dataset Size ($N$) | C++ Build | Python Build | Build Speedup | C++ Nearest | Python Nearest | Nearest Speedup | C++ Order | Python Order | Order Speedup |"
+        )
+        md.append("|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|")
+        for r in hilbert_results:
+            n_str = f"{r['n']:,}"
+            cpp_build = format_ms(r["cpp_build_ms"])
+            py_build = format_ms(r["py_build_ms"])
+            b_speedup = f"**{r['build_speedup']:.2f}x**"
+            cpp_q = format_us(r["cpp_pt_us"])
+            py_q = format_us(r["py_pt_us"])
+            q_speedup = f"**{r['query_speedup']:.1f}x**"
+            cpp_order = format_ms(r["cpp_order_ms"])
+            py_order = format_ms(r["py_order_ms"])
+            order_speedup = f"**{r['order_speedup']:.1f}x**"
+            md.append(
+                f"| {n_str} | {cpp_build} | {py_build} | {b_speedup} | {cpp_q} | {py_q} | {q_speedup} | {cpp_order} | {py_order} | {order_speedup} |"
+            )
+        md.append("")
+
+        md.append("### Detailed C++ Hilbert Results\n")
+        md.append(
+            "| Points ($N$) | Build Time | `closest_point` | `closest_idx` | Batch (`closest_indices`) | `hilbert_order` | Nearest QPS | Batch QPS |"
+        )
+        md.append("|---:|---:|---:|---:|---:|---:|---:|---:|")
+        for r in hilbert_results:
+            md.append(
+                f"| {r['n']:,} | {format_ms(r['cpp_build_ms'])} | {format_us(r['cpp_pt_us'])} | "
+                f"{format_us(r['cpp_idx_us'])} | {format_us(r['cpp_batch_us'])} | {format_ms(r['cpp_order_ms'])} | "
+                f"{r['cpp_qps']:,} qps | {r['cpp_batch_qps']:,} qps |"
+            )
+        md.append("")
+
+    md.append("### Detailed Pure Python Hilbert Results\n")
+    md.append(
+        "| Points ($N$) | Build Time | `closest_point` | `closest_idx` | Batch (`closest_indices`) | `hilbert_order` | Nearest QPS | Batch QPS |"
+    )
+    md.append("|---:|---:|---:|---:|---:|---:|---:|---:|")
+    for r in hilbert_results:
+        md.append(
+            f"| {r['n']:,} | {format_ms(r['py_build_ms'])} | {format_us(r['py_pt_us'])} | "
+            f"{format_us(r['py_idx_us'])} | {format_us(r['py_batch_us'])} | {format_ms(r['py_order_ms'])} | "
+            f"{r['py_qps']:,} qps | {r['py_batch_qps']:,} qps |"
         )
     md.append("\n")
 
     md.append("## Methodology\n")
     md.append(
-        "1. **Data**: Coordinates randomly and uniformly distributed over valid ranges ($[-90, 90]$ latitude, $[-180, 180]$ longitude for GeoKDTree; $[0, 1000] \\times [0, 1000]$ for 2D KDTree)."
+        "1. **Data**: Coordinates randomly and uniformly distributed over valid ranges ($[-90, 90]$ latitude, $[-180, 180]$ longitude for GeoKDTree and GeoHilbert; $[0, 1000] \\times [0, 1000]$ for 2D KDTree and Hilbert)."
     )
     md.append(
         "2. **Timing**: Measured with `time.perf_counter()` over thousands of repeated lookups to compute stable averages."
@@ -456,8 +908,12 @@ def main():
 
     geo_results = benchmark_geokdtree()
     kd_results = benchmark_kdtree()
+    geohilbert_results = benchmark_geohilbert()
+    hilbert_results = benchmark_hilbert()
 
-    markdown_content = generate_markdown(sys_info, geo_results, kd_results)
+    markdown_content = generate_markdown(
+        sys_info, geo_results, kd_results, geohilbert_results, hilbert_results
+    )
 
     output_path = ROOT / "benchmark.md"
     output_path.write_text(markdown_content)

@@ -7,8 +7,9 @@ from pathlib import Path
 root = Path(__file__).parent.parent
 geokdtree = root / "geokdtree" / "__init__.py"
 
-VERSION = "1.3.0"
+VERSION = "1.4.0"
 OLD_DOC_VERSIONS = [
+    "1.3.0",
     "1.2.4",
     "1.1.0",
     "1.0.1",
@@ -71,9 +72,13 @@ def generate_docs(version):
 
 # Build __init__.py from README
 readme = (root / "README.md").read_text()
-geokdtree.write_text(
-    f'r"""\n{readme}\n"""\n\ntry:\n    from geokdtree.cpp import GeoKDTree, KDTree\nexcept ImportError:\n    from geokdtree.geokdtree import GeoKDTree\n    from geokdtree.kdtree import KDTree\n'
-)
+import_string = """try:
+    from geokdtree.cpp import GeoKDTree, KDTree, Hilbert, GeoHilbert
+except ImportError:
+    from geokdtree.geokdtree import GeoKDTree
+    from geokdtree.kdtree import KDTree
+    from geokdtree.hilbert import Hilbert, GeoHilbert"""
+geokdtree.write_text(f'r"""\n{readme}\n"""\n\n{import_string}\n')
 
 # Update the versions manifest loaded dynamically by client-side JS
 update_versions_manifest()

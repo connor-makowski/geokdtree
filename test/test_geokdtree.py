@@ -236,3 +236,98 @@ def test_lat_lon_to_xyz_conversion():
     assert math.isclose(y, 1.0, abs_tol=1e-6)
     assert math.isclose(z, 0.0, abs_tol=1e-6)
     assert idx == 2
+
+
+@pytest.mark.parametrize("TreeClass", IMPLEMENTATIONS)
+def test_geokdtree_batch_queries(TreeClass):
+    tree = TreeClass(EXAMPLE_POINTS)
+    queries = [(47.6062, -122.3321), (51.7520, -1.2577)]  # Seattle, Oxford
+    expected_indices = [2, 3]
+    expected_points = [EXAMPLE_POINTS[2], EXAMPLE_POINTS[3]]
+
+    assert tree.closest_indices(queries) == expected_indices
+    assert tree.closest_indicies(queries) == expected_indices
+    assert tree.closest_points(queries) == expected_points
+
+    # Generator queries
+    assert tree.closest_indices(q for q in queries) == expected_indices
+    assert tree.closest_points(q for q in queries) == expected_points
+
+    # Empty queries
+    assert tree.closest_indices([]) == []
+    assert tree.closest_points([]) == []
+
+
+@pytest.mark.parametrize("TreeClass", IMPLEMENTATIONS)
+def test_geokdtree_batch_validation_errors(TreeClass):
+    tree = TreeClass(EXAMPLE_POINTS)
+    # Wrong dimension
+    with pytest.raises((ValueError, TypeError)):
+        tree.closest_points([(1.0,)])
+    with pytest.raises((ValueError, TypeError)):
+        tree.closest_points([(1.0, 2.0, 3.0)])
+    # Non-finite coordinates
+    with pytest.raises((ValueError, TypeError)):
+        tree.closest_points([(1.0, float("nan"))])
+    with pytest.raises((ValueError, TypeError)):
+        tree.closest_points([(float("inf"), 1.0)])
+
+    # Integer overflow in batch conversion
+    with pytest.raises((OverflowError, ValueError)):
+        tree.closest_points([(10**1000, 1.0)])
+
+
+class CustomFloat(float):
+    pass
+
+
+class CustomInt(int):
+    pass
+
+
+@pytest.mark.parametrize("TreeClass", IMPLEMENTATIONS)
+def test_geokdtree_numeric_subclasses_and_overflow(TreeClass):
+    # Custom numeric subclasses work transparently
+    pts = [
+        (CustomFloat(45.0), CustomInt(90)),
+        (CustomFloat(-45.0), CustomInt(-90)),
+    ]
+    tree = TreeClass(pts)
+    assert tree.closest_point((CustomFloat(45.1), CustomInt(90))) == (
+        45.0,
+        90.0,
+    )
+    assert tree.closest_points([(CustomFloat(45.1), CustomInt(90))]) == [
+        (45.0, 90.0)
+    ]
+    assert tree.closest_idx((CustomFloat(45.1), CustomInt(90))) == 0
+    assert tree.closest_indices([(CustomFloat(45.1), CustomInt(90))]) == [0]
+
+    # Overflow in construction
+    with pytest.raises((OverflowError, ValueError)):
+        TreeClass([(10**1000, 0.0)])
+
+    # Overflow in scalar queries
+    t = TreeClass([(0.0, 0.0)])
+    with pytest.raises((OverflowError, ValueError)):
+        t.closest_point((10**1000, 0.0))
+    with pytest.raises((OverflowError, ValueError)):
+        t.closest_idx((10**1000, 0.0))
+
+
+@pytest.mark.parametrize("TreeClass", IMPLEMENTATIONS)
+def test_geokdtree_tie_breaking_and_duplicates(TreeClass):
+    # Equidistant points along equator
+    points = [(0.0, 10.0), (0.0, -10.0)]
+    tree = TreeClass(points)
+    pt = tree.closest_point((0.0, 0.0))
+    assert pt in [(0.0, 10.0), (0.0, -10.0)]
+
+    # Duplicates in dataset
+    dup_points = [(10.0, 20.0), (0.0, 0.0), (10.0, 20.0), (-30.0, -40.0)]
+    dup_tree = TreeClass(dup_points)
+    assert dup_tree.closest_point((10.0, 20.0)) == (10.0, 20.0)
+    assert dup_tree.closest_points([(10.0, 20.0), (0.0, 0.0)]) == [
+        (10.0, 20.0),
+        (0.0, 0.0),
+    ]

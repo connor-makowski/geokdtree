@@ -1,4 +1,4 @@
-from .core import kdtree
+from .core import kdtree, validate_points
 from math import cos, sin, pi
 
 
@@ -320,3 +320,44 @@ class GeoKDTree:
             d: (self.points[idx] if idx is not None else None)
             for d, idx in indices.items()
         }
+
+    def closest_indices(self, points: list[tuple[float | int, float | int]]):
+        """
+        Function:
+
+        - Return original dataset indices for a list of (latitude, longitude) query points in query order.
+
+        Required Arguments:
+
+        - `points`
+            - Type: list[tuple[float | int, float | int]]
+            - What: A list of (latitude, longitude) coordinate tuples to query
+
+        Returns:
+
+        - A list of original dataset indices matching the query points order.
+        """
+        pts = validate_points(points, 2)
+        if pts and not self.points:
+            raise ValueError("tree is empty")
+        return [self.closest_idx(point) for point in pts]
+
+    closest_indicies = closest_indices
+
+    def closest_points(self, points: list[tuple[float | int, float | int]]):
+        """
+        Function:
+
+        - Return closest (latitude, longitude) points for a list of query points in query order.
+
+        Required Arguments:
+
+        - `points`
+            - Type: list[tuple[float | int, float | int]]
+            - What: A list of (latitude, longitude) coordinate tuples to query
+
+        Returns:
+
+        - A list of closest (latitude, longitude) points matching the query points order.
+        """
+        return [self.points[i] for i in self.closest_indices(points)]

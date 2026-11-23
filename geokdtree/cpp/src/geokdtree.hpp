@@ -44,7 +44,7 @@ struct KDNode2D {
 
 // General N-D KD-Tree node structure
 struct KDNodeND {
-    std::vector<double> point;
+    size_t coord_offset = 0;
     int axis = 0;
     int left = -1;
     int right = -1;
@@ -52,18 +52,19 @@ struct KDNodeND {
     KDNodeND() = default;
 };
 
-// Internal point for GeoKDTree building
+// Internal point for GeoKDTree building and leaf storage
 struct GeoPointInternal {
     double x = 0.0;
     double y = 0.0;
     double z = 0.0;
-    double lat = 0.0;
-    double lon = 0.0;
     int idx = 0;
 };
 
 // Geo KD-Tree node structure (flat arena, inline AABB, lat/lon & coordinates)
 struct GeoKDNode {
+    double min_x = 0.0, max_x = 0.0;
+    double min_y = 0.0, max_y = 0.0;
+    double min_z = 0.0, max_z = 0.0;
     double x = 0.0;
     double y = 0.0;
     double z = 0.0;
@@ -71,17 +72,31 @@ struct GeoKDNode {
     double lon = 0.0;
     int idx = 0;
     int axis = 0;
-    double min_x = 0.0, max_x = 0.0;
-    double min_y = 0.0, max_y = 0.0;
-    double min_z = 0.0, max_z = 0.0;
     int left = -1;
     int right = -1;
+    size_t leaf_start = 0;
+    size_t leaf_count = 0;
 
     GeoKDNode() = default;
 };
 
 // Helper functions
 namespace kdtree_helpers {
+inline double squared_distance_raw(
+    const double* p1,
+    const double* p2,
+    int axis_count,
+    double cutoff = std::numeric_limits<double>::max()
+) {
+    double sum = 0.0;
+    for (int i = 0; i < axis_count; ++i) {
+        double diff = p1[i] - p2[i];
+        sum += diff * diff;
+        if (sum >= cutoff) return sum;
+    }
+    return sum;
+}
+
 double squared_distance(
     const std::vector<double>& p1,
     const std::vector<double>& p2,
@@ -98,6 +113,7 @@ class KDTree {
 private:
     std::vector<KDNode2D> nodes_2d;
     std::vector<KDNodeND> nodes_nd;
+    std::vector<double> nd_coords;
     int root = -1;
     int dimensions = 0;
 
@@ -120,6 +136,7 @@ private:
 
     // 2D specialized closest
     void find_closest_2d(
+        const KDNode2D* nodes_ptr,
         int node_idx,
         double px,
         double py,
@@ -129,15 +146,18 @@ private:
 
     // General N-D closest
     void find_closest_nd(
+        const KDNodeND* nodes_ptr,
+        const double* coords_ptr,
         int node_idx,
-        const std::vector<double>& point,
-        std::vector<double>& best,
+        const double* query,
+        int& best_node,
         double& best_dist,
         int axis_count
     ) const;
 
     // Find closest point per quadrant recursively (2D only)
     void find_closest_point_per_quadrant_2d(
+        const KDNode2D* nodes_ptr,
         int node_idx,
         double px,
         double py,
@@ -149,6 +169,7 @@ private:
 public:
     // Constructors
     explicit KDTree(const std::vector<std::vector<double>>& points);
+    explicit KDTree(std::vector<std::vector<double>>&& points);
     explicit KDTree(std::vector<KDPoint2D> pts);
 
     int get_dimensions() const { return dimensions; }
@@ -159,8 +180,13 @@ public:
     void closest_point_per_quadrant_2d_raw(
         double px, double py, int best_indices[4]
     ) const;
+    void closest_points_2d_batch(
+        const std::vector<std::pair<double, double>>& queries,
+        std::pair<double, double>* out_points
+    ) const;
 
     // Standard API methods
+    const double* closest_point_data(const double* query) const;
     std::vector<double> closest_point(const std::vector<double>& point) const;
     std::unordered_map<std::string, std::optional<std::vector<double>>>
     closest_point_per_quadrant(const std::vector<double>& point) const;
@@ -169,7 +195,10 @@ public:
 // Geographic KD-Tree class (for lat/lon coordinates)
 class GeoKDTree {
 private:
+    static constexpr size_t LEAF_SIZE = 32;
     std::vector<GeoKDNode> nodes;
+    std::vector<GeoPointInternal> leaf_points;
+    std::vector<std::pair<double, double>> leaf_geo;
     int root = -1;
     std::vector<std::pair<double, double>> original_points;
 
@@ -183,6 +212,8 @@ private:
 
     // Find closest point 3D
     void find_closest_3d(
+        const GeoKDNode* nodes_ptr,
+        const GeoPointInternal* leaf_ptr,
         int node_idx,
         double qx,
         double qy,
@@ -193,6 +224,9 @@ private:
 
     // Find closest point per quadrant recursively
     void find_closest_point_per_quadrant_3d(
+        const GeoKDNode* nodes_ptr,
+        const GeoPointInternal* leaf_ptr,
+        const std::pair<double, double>* leaf_geo_ptr,
         int node_idx,
         double qx,
         double qy,
@@ -222,6 +256,16 @@ public:
     std::pair<double, double> closest_point(double lat, double lon) const;
     void closest_idx_per_quadrant_raw(
         double lat, double lon, int best_indices[4]
+    ) const;
+
+    // Fast batch queries
+    void closest_indices_batch(
+        const std::vector<std::pair<double, double>>& queries,
+        int* out_indices
+    ) const;
+    void closest_points_batch(
+        const std::vector<std::pair<double, double>>& queries,
+        std::pair<double, double>* out_points
     ) const;
 
     // Standard API methods
